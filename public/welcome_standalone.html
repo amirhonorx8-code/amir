@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<!-- ============================================================================
+  welcome_standalone.html
+  نسخة مستقلة من صفحة "سجل المهام اليومية" (welcome.html.erb) — تشتغل بدون Rails
+  ----------------------------------------------------------------------------
+  • افتح الملف مباشرة في المتصفح (double-click) — مش محتاج سيرفر.
+  • البيانات اللي هنا (مهام/إجازات/تليفونات) عينات ثابتة جوه الملف — غيّرها براحتك.
+  • الأجزاء اللي كانت بتشتغل بسيرفر (حفظ في قاعدة البيانات، المصحف من /quran_data،
+    تنبيه العاجل اللحظي بين التابات، ملفات الموسيقى) شغّلت منها الجزء اللي يشتغل
+    في المتصفح لوحده + localStorage، والباقي متوثق في التعليقات.
+  • النسخة الكاملة الأصلية: welcome_full_copy.html.erb
+  • كل السكريبتات: welcome_page_scripts.js
+============================================================================ -->
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>سجل المهام اليومية — إدارة التشغيل</title>
+
+<!-- Tailwind + Font Awesome (من CDN — محتاج إنترنت أول مرة) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Amiri+Quran&family=Amiri:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+  html, body {
+    overflow-x: hidden;
+    background-color: var(--lp-bg);
+    transition: background 0.3s ease;
+  }
+  :root {
+    --launchpad-blue: #489DF9;
+    /* الثيم الافتراضي: غامق */
+    --lp-bg: #0F0B1E;
+    --lp-command-bg: #1A1628;
+    --lp-command-border: #37304F;
+    --lp-card-bg: #16121F;
+    --lp-text: #E9E4F8;
+    --lp-text-muted: #9D97B8;
+  }
+  /* الثيم الفاتح (الافتراضي للعرض) — أزرق سماوي */
+  html.theme-light {
+    --lp-bg: #A7D8F0;
+    --lp-command-bg: #F8FAFC;
+    --lp-command-border: #2E6B99;
+    --lp-card-bg: #FFFFFF;
+    --lp-text: #0F172A;
+    --lp-text-muted: #2E4E6B;
+  }
+  #launchpad {
+    /* خلفية الصفحة: تدرج بدل الصورة (الصورة كانت asset من Rails) */
+    background: linear-gradient(160deg, rgba(10,14,32,0.55), rgba(10,14,32,0.35)), var(--lp-bg);
+    min-height: 100vh;
+  }
+  /* الكروت — ظل 3D */
+  .rounded-2xl.shadow-xl {
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.6), inset 0 -1px 0 rgba(0,0,0,.1),
+                0 8px 16px -4px rgba(0,0,0,.35), 0 22px 44px -8px rgba(0,0,0,.5);
+    transition: transform .2s ease, box-shadow .2s ease;
+  }
+  .rounded-2xl.shadow-xl:hover { transform: translateY(-4px); }
+  html:not(.theme-light) .rounded-2xl.shadow-xl {
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.35), inset 0 -1px 0 rgba(0,0,0,.25),
+                0 8px 16px -4px rgba(0,0,0,.5), 0 22px 44px -8px rgba(0,0,0,.6);
+  }
+  .stat-card { transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease; }
+  .stat-card:hover { transform: translateY(-4px); box-shadow: 0 14px 30px rgba(31,58,95,.22), 0 0 0 3px rgba(31,58,95,.15); }
+  .marble-card { background-color:#fff; background-image: linear-gradient(135deg,#ffffff 0%,#f3efe4 60%,#eae3d3 100%); }
+  html:not(.theme-light) .marble-card { background-color: var(--lp-card-bg); background-image: none; }
+
+  /* شريط العلم */
+  .flag-strip { height:6px; background: linear-gradient(to bottom, #CE1126 0 33.3%, #FFFFFF 33.3% 66.6%, #000000 66.6% 100%); }
+  /* إطار المستند الحكومي */
+  .gov-doc-frame { position:fixed; inset:0; z-index:45; pointer-events:none;
+    border:3px double rgba(31,58,95,.4); box-shadow: inset 0 0 0 1px rgba(212,175,55,.35); }
+  .frame-corner { position:absolute; width:42px; height:42px; border:3px solid #B8860B; filter:drop-shadow(0 0 6px rgba(212,175,55,.45)); }
+  .frame-corner-tl { top:-3px; left:-3px; border-right:none; border-bottom:none; border-top-left-radius:8px; }
+  .frame-corner-tr { top:-3px; right:-3px; border-left:none; border-bottom:none; border-top-right-radius:8px; }
+  .frame-corner-bl { bottom:-3px; left:-3px; border-right:none; border-top:none; border-bottom-left-radius:8px; }
+  .frame-corner-br { bottom:-3px; right:-3px; border-left:none; border-top:none; border-bottom-right-radius:8px; }
+
+  /* زرار الثيم */
+  .theme-toggle-btn { position:fixed; top:4.5rem; right:1.25rem; z-index:50; width:3.5rem; height:2rem;
+    border-radius:9999px; border:1px solid var(--lp-command-border); background:var(--lp-command-bg); cursor:pointer;
+    box-shadow:0 2px 10px rgba(0,0,0,.25); }
+  .theme-toggle-knob { position:absolute; top:50%; left:.2rem; transform:translateY(-50%); display:flex; align-items:center;
+    justify-content:center; width:1.6rem; height:1.6rem; border-radius:9999px; background:linear-gradient(135deg,#6B5CA5,#8B7AC9);
+    color:#fff; font-size:.8rem; transition:left .3s cubic-bezier(.68,-.15,.27,1.15), background .3s ease; }
+  .theme-toggle-btn .theme-icon-light { display:none; }
+  html.theme-light .theme-toggle-knob { left: calc(100% - 1.8rem); background:linear-gradient(135deg,#F59E0B,#FBBF24); }
+  html.theme-light .theme-toggle-btn .theme-icon-light { display:block; }
+  html.theme-light .theme-toggle-btn .theme-icon-dark { display:none; }
+
+  /* النبض */
+  @keyframes openPulse { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:.75;transform:scale(1.06);} }
+  @keyframes titleWhiteGlow { 0%,100%{text-shadow:0 0 0 rgba(255,255,255,0);opacity:1;} 50%{text-shadow:0 0 12px rgba(255,255,255,.9),0 0 28px rgba(255,255,255,.55);opacity:.92;} }
+  .title-glow-white { animation: titleWhiteGlow 2.2s ease-in-out infinite; }
+  .open-card-attention { border-color:#F59E0B !important; box-shadow:0 0 0 3px rgba(245,158,11,.25), 0 10px 25px rgba(245,158,11,.18) !important; }
+  .prayer-card-alert { border-color:#DC2626 !important; background:linear-gradient(to left, rgba(220,38,38,.18), rgba(176,30,46,.28)) !important;
+    box-shadow:0 0 0 4px rgba(220,38,38,.3), 0 0 30px rgba(220,38,38,.45) !important; animation: prayerGlow 1.2s ease-in-out infinite; }
+  @keyframes prayerGlow { 0%,100%{box-shadow:0 0 0 4px rgba(220,38,38,.3),0 0 20px rgba(220,38,38,.35);} 50%{box-shadow:0 0 0 6px rgba(220,38,38,.45),0 0 40px rgba(220,38,38,.6);} }
+  .add-task-pulse { animation: addTaskGlow 1.8s ease-in-out infinite; }
+  @keyframes addTaskGlow { 0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,0);transform:scale(1);} 50%{box-shadow:0 0 0 10px rgba(255,255,255,.18),0 0 24px 6px rgba(255,255,255,.45);transform:scale(1.06);} }
+
+  /* الجدول */
+  .task-table tbody tr:nth-child(even){ background: rgba(31,58,95,.04); }
+  .task-table tbody tr:hover{ background: rgba(31,58,95,.09); }
+  .notes-cell { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; max-width:220px; }
+  .desc-cell { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .search-input:focus { border-color:#1F3A5F !important; box-shadow:0 0 0 3px rgba(31,58,95,.15); }
+  .filter-chip-active { background:linear-gradient(to left,#1F3A5F 0%,#132743 100%) !important; color:#fff !important; border-color:#1F3A5F !important; font-weight:700; }
+  .reveal { animation: fadeInUp .6s ease-out both; }
+  @keyframes fadeInUp { from{opacity:0;transform:translateY(18px);} to{opacity:1;transform:translateY(0);} }
+  .reveal-1{animation-delay:.06s}.reveal-2{animation-delay:.12s}.reveal-3{animation-delay:.18s}
+  .reveal-4{animation-delay:.24s}.reveal-5{animation-delay:.3s}.reveal-6{animation-delay:.36s}
+
+  /* الطباعة: السجل بس */
+  @media print {
+    html, body { background:#fff !important; }
+    html { --lp-bg:#fff; --lp-card-bg:#fff; --lp-text:#111; --lp-text-muted:#555; --lp-command-border:#ddd; }
+    body * { visibility:hidden; }
+    #print-area, #print-area * { visibility:visible; }
+    #print-area { position:absolute; top:0; left:0; right:0; width:100%; }
+    .no-print { display:none !important; }
+    .task-table thead tr { background:#EEF2F7 !important; color:#111 !important; }
+  }
+  /* عداد الموسيقى */
+  .cm-eq{width:3px;height:7px;border-radius:2px;background:#0E7490;display:inline-block;opacity:.3;}
+  #cm-card.cm-playing .cm-eq{animation:cmEq 1s ease-in-out infinite;opacity:1;}
+  #cm-card.cm-playing .cm-eq:nth-child(2){animation-delay:.2s;}
+  #cm-card.cm-playing .cm-eq:nth-child(3){animation-delay:.4s;}
+  @keyframes cmEq{0%,100%{height:7px;}50%{height:16px;}}
+  .dua-tab{padding:6px 14px;border-radius:9999px;font-size:12px;font-weight:700;white-space:nowrap;cursor:pointer;border:1px solid transparent;background:var(--lp-bg);color:var(--lp-text-muted);transition:all .15s ease;}
+  .dua-tab-active{background:linear-gradient(135deg,#0F766E,#134E4A) !important;color:#fff !important;border-color:transparent !important;}
+</style>
+</head>
+
+<body>
+<div id="launchpad" class="min-h-screen relative">
+
+  <!-- شريط العلم المصري -->
+  <div class="flag-strip w-full"></div>
+
+  <!-- إطار المستند الحكومي -->
+  <div class="gov-doc-frame no-print" aria-hidden="true">
+    <span class="frame-corner frame-corner-tl"></span><span class="frame-corner frame-corner-tr"></span>
+    <span class="frame-corner frame-corner-bl"></span><span class="frame-corner frame-corner-br"></span>
+  </div>
+
+  <!-- زرار الثيم -->
+  <button id="themeToggle" class="theme-toggle-btn" role="switch" aria-label="تبديل الوضع الليلي/النهاري" title="تبديل الوضع">
+    <span class="theme-toggle-knob"><i class="fa-solid fa-moon theme-icon-dark"></i><i class="fa-solid fa-sun theme-icon-light"></i></span>
+  </button>
+
+  <!-- ============ البانر الرسمي ============ -->
+  <section class="w-full max-w-4xl mx-auto px-4 pt-4 md:pt-8 pb-8 reveal">
+    <div class="rounded-2xl p-4 md:p-6 text-white shadow-xl relative" style="background:linear-gradient(to left,#1F3A5F 0%,#132743 100%);">
+      <div class="flex items-center justify-between gap-2 md:gap-3">
+        <!-- الشعار — استبدل الدايرة دي بصورة الشعار الحقيقي لو متاحة -->
+        <div class="shrink-0"><span class="inline-flex items-center justify-center w-12 h-12 md:w-20 md:h-20 rounded-full bg-white overflow-hidden border-2" style="border-color:rgba(255,255,255,.6);"><span class="text-2xl md:text-4xl">🦅</span></span></div>
+        <div class="flex-1 flex flex-col items-center text-center min-w-0">
+          <p class="text-[10px] md:text-xs font-semibold opacity-80">جمهورية مصر العربية</p>
+          <h2 class="text-base md:text-2xl font-bold mt-0.5 md:mt-1 title-glow-white">إدارة التشغيل</h2>
+          <h1 class="text-lg md:text-3xl font-bold mt-0.5 md:mt-1 leading-tight">سجل المهام اليومية</h1>
+        </div>
+        <div class="shrink-0"><span class="inline-flex items-center justify-center w-12 h-12 md:w-20 md:h-20 rounded-full bg-white overflow-hidden border-2" style="border-color:rgba(255,255,255,.6);"><span class="text-2xl md:text-4xl">🏛️</span></span></div>
+      </div>
+      <div class="mt-3 md:mt-4 flex flex-wrap items-center justify-center gap-2 no-print">
+        <span class="badge badge-lg gap-1" style="background:rgba(255,255,255,.15);color:#fff;border:none;"><i class="fa-solid fa-clipboard-list"></i> Work Task Log — <span id="banner-total">157</span> مهمة</span>
+        <span class="badge badge-warning badge-sm gap-1 font-semibold no-print" style="background:#F59E0B;color:#132743;border:none;animation:openPulse 1.6s infinite;"><i class="fa-solid fa-clock"></i> مفتوحة: <span id="banner-open">3</span></span>
+        <button class="btn btn-xs text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg font-semibold gap-1 border-none shadow-sm" onclick="document.getElementById('saturday-modal').showModal()"><i class="fa-solid fa-calendar-days"></i> كشف السبت</button>
+        <button class="btn btn-xs text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg font-semibold gap-1 border-none shadow-sm" onclick="document.getElementById('export-modal').showModal()"><i class="fa-solid fa-database"></i> مركز البيانات (JSON/CSV)</button>
+        <button class="btn btn-xs btn-outline text-white border-white/60 hover:bg-white hover:text-[#132743] rounded-lg font-semibold gap-1" onclick="window.print()"><i class="fa-solid fa-print"></i> طباعة / Print</button>
+      </div>
+    </div>
+    <div class="mx-auto mt-3" style="width:85%;height:3px;border-radius:9999px;background:linear-gradient(to left,#B8860B,#FFD700,#FFD700,#B8860B);"></div>
+  </section>
+
+  <!-- ============ الترحيب ============ -->
+  <section class="w-full max-w-4xl mx-auto px-4 pb-8 reveal reveal-1">
+    <div class="rounded-2xl shadow-xl p-5 md:p-8 text-center relative overflow-hidden marble-card" style="border:1px solid var(--lp-command-border);">
+      <div class="relative z-10">
+        <span class="block mx-auto w-14 h-14 md:w-16 md:h-16 rounded-full overflow-hidden shadow-sm mb-3 inline-flex items-center justify-center text-3xl" style="border:2px solid var(--lp-command-border); background:#fff;">🦅</span>
+        <div class="inline-block px-5 py-3 rounded-xl mt-2" style="background:rgba(255,255,255,.92);box-shadow:0 2px 12px rgba(0,0,0,.18);">
+          <h2 class="text-xl md:text-2xl font-bold" style="color:#132743;">الهيئة العامة للرقابة على الصادرات والواردات</h2>
+          <p class="mt-1 text-sm font-semibold" style="color:#1F3A5F;">اليوم هو <span id="today-ar">—</span></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ صف الكروت ============ -->
+  <section class="w-full max-w-6xl mx-auto px-4 pb-10 reveal reveal-2">
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+
+      <!-- موسيقى هادئة (تجريبية — بدون ملفات صوت، بتقلب الأيقونة بس) -->
+      <div id="cm-card" class="rounded-2xl shadow-xl p-5 md:p-6 text-center relative stat-card marble-card no-print" style="border:1px solid rgba(31,58,95,.28);">
+        <span class="inline-flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-full mx-auto" style="background:linear-gradient(135deg,#0E7490,#134E4A);box-shadow:0 4px 10px rgba(14,116,144,.4);"><span class="text-2xl md:text-3xl leading-none">🎵</span></span>
+        <p class="text-sm mt-1.5 font-semibold" style="color:#132743;">موسيقى هادئة</p>
+        <p id="cm-title" class="text-[10px] mt-1 font-bold truncate px-0.5" style="color:#0E7490;">The Departure — Max Richter</p>
+        <div class="flex items-center justify-center gap-2 mt-2">
+          <button type="button" id="cm-prev" class="w-8 h-8 rounded-full flex items-center justify-center text-white" style="background:#132743;border:none;"><i class="fa-solid fa-backward-step text-xs"></i></button>
+          <button type="button" id="cm-play" class="w-11 h-11 rounded-full flex items-center justify-center text-white" style="background:linear-gradient(135deg,#0E7490,#134E4A);border:none;"><i id="cm-play-icon" class="fa-solid fa-play text-base"></i></button>
+          <button type="button" id="cm-next" class="w-8 h-8 rounded-full flex items-center justify-center text-white" style="background:#132743;border:none;"><i class="fa-solid fa-forward-step text-xs"></i></button>
+        </div>
+        <div class="flex items-end justify-center gap-0.5 mt-1.5" style="height:16px;"><span class="cm-eq"></span><span class="cm-eq"></span><span class="cm-eq"></span></div>
+        <p class="text-[9px] mt-1 font-semibold" style="color:#64748B;">معاينة — الملفات الصوتية في نسخة Rails</p>
+      </div>
+
+      <!-- تم -->
+      <a href="#" onclick="return false;" class="rounded-2xl shadow-xl p-5 md:p-6 text-center block stat-card marble-card" style="border:1px solid rgba(31,58,95,.28);text-decoration:none;">
+        <span class="inline-flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-full mx-auto" style="background:linear-gradient(135deg,#1F3A5F,#2E5A8C);"><span class="text-2xl md:text-3xl leading-none">✅</span></span>
+        <p class="text-3xl md:text-4xl font-bold mt-1.5" style="color:#059669;">313</p>
+        <p class="text-xs mt-1.5 font-semibold" style="color:#132743;">تم إنجازها</p>
+      </a>
+
+      <!-- مفتوحة -->
+      <a href="#" onclick="return false;" class="rounded-2xl shadow-xl p-5 md:p-6 text-center block relative stat-card marble-card open-card-attention" style="border:1px solid rgba(31,58,95,.28);text-decoration:none;">
+        <span class="absolute -top-2 -left-2 badge badge-sm gap-1 font-semibold no-print" style="background:#F59E0B;color:#132743;border:none;animation:openPulse 1.6s infinite;"><i class="fa-solid fa-bell"></i> تنبيه</span>
+        <span class="inline-flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-full mx-auto" style="background:linear-gradient(135deg,#1F3A5F,#2E5A8C);"><span class="text-2xl md:text-3xl leading-none">⏰</span></span>
+        <p class="text-3xl md:text-4xl font-bold mt-1.5" style="color:#D97706;">6</p>
+        <p class="text-xs mt-1.5 font-semibold" style="color:#132743;">مفتوحة</p>
+      </a>
+
+      <!-- أرقام التليفونات -->
+      <button type="button" onclick="document.getElementById('directory-modal').showModal()" class="rounded-2xl shadow-xl p-5 md:p-6 text-center block w-full cursor-pointer relative stat-card marble-card" style="border:1px solid rgba(31,58,95,.28);">
+        <span class="inline-flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-full mx-auto" style="background:linear-gradient(135deg,#1F3A5F,#2E5A8C);"><span class="text-2xl md:text-3xl leading-none">📞</span></span>
+        <p class="text-sm mt-1.5 font-semibold truncate" style="color:#132743;">أرقام التليفونات</p>
+        <p class="text-xs mt-1.5" style="color:#132743;" id="directory-total-label">110 رقم</p>
+      </button>
+
+      <!-- عاجل -->
+      <button type="button" onclick="document.getElementById('urgent-modal').showModal()" class="rounded-2xl shadow-xl p-5 md:p-6 text-center block w-full cursor-pointer relative stat-card marble-card" style="border:1px solid rgba(31,58,95,.28);">
+        <span class="inline-flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-full mx-auto" style="background:linear-gradient(135deg,#1F3A5F,#2E5A8C);"><span class="text-2xl md:text-3xl leading-none">🚨</span></span>
+        <p class="text-sm mt-1.5 font-semibold truncate" style="color:#132743;" id="urgent-card-preview">تنبيه عاجل</p>
+        <p class="text-xs mt-1.5" style="color:#132743;">اضغط للتعديل</p>
+      </button>
+
+      <!-- مهام الأسبوع -->
+      <a href="#" onclick="return false;" class="rounded-2xl shadow-xl p-5 md:p-6 text-center block stat-card marble-card" style="border:1px solid rgba(31,58,95,.28);text-decoration:none;">
+        <span class="inline-flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-full mx-auto" style="background:linear-gradient(135deg,#1F3A5F,#2E5A8C);"><span class="text-2xl md:text-3xl leading-none">📅</span></span>
+        <p class="text-3xl md:text-4xl font-bold mt-1.5" style="color:#132743;">18</p>
+        <p class="text-xs mt-1.5 font-semibold" style="color:#132743;">مهام هذا الأسبوع</p>
+      </a>
+
+      <!-- نوت للتذكير -->
+      <button type="button" onclick="document.getElementById('notes-modal').showModal()" class="rounded-2xl shadow-xl p-5 md:p-6 text-center block w-full cursor-pointer stat-card marble-card" style="border:1px solid rgba(245,158,11,.55);">
+        <span class="inline-flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-full mx-auto" style="background:linear-gradient(135deg,#F59E0B,#F97316);"><span class="text-2xl md:text-3xl leading-none">📌</span></span>
+        <p class="text-sm mt-1.5 font-semibold" style="color:#132743;">نوت للتذكير</p>
+        <p class="text-xs mt-1.5 truncate" style="color:#132743;" id="note-card-preview">اضغط للكتابة</p>
+        <p class="text-xs mt-1.5 font-bold" style="color:#B45309;">اضغط للعرض أو التعديل</p>
+      </button>
+
+      <!-- مواعيد الصلاة -->
+      <button type="button" id="prayer-card" data-fajr="05:06" data-dhuhr="12:53" data-asr="16:27" data-maghrib="19:12" data-isha="20:31"
+        onclick="document.getElementById('prayer-modal').showModal()" class="rounded-2xl shadow-xl p-5 md:p-6 text-center block w-full cursor-pointer relative stat-card marble-card" style="border:1px solid rgba(31,58,95,.28);">
+        <span id="prayer-alert-badge" class="hidden absolute -top-2 -left-2 badge badge-sm gap-1 font-bold no-print" style="background:#B01E2E;color:#fff;border:2px solid #fff;animation:openPulse 1.2s infinite;"><i class="fa-solid fa-bell"></i> أذان الآن</span>
+        <span class="inline-flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-full mx-auto" style="background:linear-gradient(135deg,#1F3A5F,#2E5A8C);"><span class="text-2xl md:text-3xl leading-none">🕌</span></span>
+        <p class="text-sm mt-1.5 font-semibold truncate" style="color:#132743;">مواعيد الصلاة</p>
+        <p class="text-xs mt-1.5 leading-relaxed" style="color:#132743;">الفجر 05:06 • الظهر 12:53 • العصر 16:27<br>المغرب 19:12 • العشاء 20:31</p>
+        <p id="prayer-countdown" class="text-xs mt-1.5 font-bold" style="color:#B45309;"></p>
+      </button>
+
+      <!-- التقويم -->
+      <button type="button" onclick="document.getElementById('calendar-modal').showModal()" class="rounded-2xl shadow-xl p-5 md:p-6 text-center block w-full cursor-pointer relative stat-card marble-card" style="border:1px solid rgba(31,58,95,.28);" title="افتح التقويم الشهري">
+        <span class="inline-flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-full mx-auto" style="background:linear-gradient(135deg,#1F3A5F,#2E5A8C);"><span class="text-2xl md:text-3xl leading-none">🗓️</span></span>
+        <p class="text-sm mt-1.5 font-semibold truncate" style="color:#132743;">التقويم الشهري</p>
+        <p class="text-xs mt-1.5" style="color:#132743;" id="cal-card-sub">اضغط للاستعراض</p>
+      </button>
+
+      <!-- آلة حاسبة -->
+      <button type="button" onclick="document.getElementById('calc-modal').showModal()" class="rounded-2xl shadow-xl p-5 md:p-6 text-center block w-full cursor-pointer relative stat-card marble-card" style="border:1px solid rgba(31,58,95,.28);" title="افتح الآلة الحاسبة">
+        <span class="inline-flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-full mx-auto" style="background:linear-gradient(135deg,#1F3A5F,#2E5A8C);"><span class="text-2xl md:text-3xl leading-none">🧮</span></span>
+        <p class="text-sm mt-1.5 font-semibold truncate" style="color:#132743;">آلة حاسبة</p>
+        <p class="text-xs mt-1.5" style="color:#132743;">عمليات حسابية سريعة</p>
+      </button>
+    </div>
+  </section>
+
+  <!-- ============ سجل الإجازات (عينة ثابتة) ============ -->
+  <section class="w-full max-w-4xl mx-auto px-4 pb-8 reveal reveal-4">
+    <div class="rounded-2xl shadow-xl overflow-hidden marble-card" style="border:1px solid var(--lp-command-border);">
+      <div class="px-6 py-4 flex flex-wrap items-center justify-between gap-2" style="background:linear-gradient(to left,#1F3A5F 0%,#132743 100%);">
+        <h2 class="text-lg md:text-xl font-bold text-white flex items-center gap-2"><i class="fa-solid fa-umbrella-beach"></i> الإجازات والإذونات والمأموريات</h2>
+        <span class="badge badge-lg gap-1 no-print" style="background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.35);">3 سجلات (عينة)</span>
+      </div>
+      <div class="overflow-x-auto px-2 py-3">
+        <table class="task-table w-full text-sm" style="color:var(--lp-text);">
+          <thead><tr style="background:linear-gradient(to left,#1F3A5F 0%,#132743 100%);color:#fff;">
+            <th class="px-4 py-2 text-right font-semibold">الموظف</th><th class="px-4 py-2 text-right font-semibold">النوع</th>
+            <th class="px-4 py-2 text-right font-semibold">من / إلى</th><th class="px-4 py-2 text-right font-semibold">ملاحظات</th>
+          </tr></thead>
+          <tbody>
+            <tr style="border-bottom:1px solid var(--lp-command-border);"><td class="px-4 py-2 font-medium">أمير طلعت</td><td class="px-4 py-2"><span class="badge badge-sm" style="background:rgba(72,157,249,.15);color:#1F3A5F;border-color:rgba(72,157,249,.4);">إجازة اعتيادي</span></td><td class="px-4 py-2 text-xs">3 أغسطس 2026 ← 5 أغسطس 2026 <span class="badge badge-sm" style="background:rgba(31,58,95,.1);color:#1F3A5F;">3 يوم</span></td><td class="px-4 py-2"><span class="notes-cell">سفر</span></td></tr>
+            <tr style="border-bottom:1px solid var(--lp-command-border);"><td class="px-4 py-2 font-medium">محمد حنفى</td><td class="px-4 py-2"><span class="badge badge-sm" style="background:rgba(245,158,11,.15);color:#B45309;border-color:rgba(245,158,11,.4);">اذن صباحى</span></td><td class="px-4 py-2 text-xs">10 أغسطس 2026 <span class="badge badge-sm" style="background:rgba(31,58,95,.1);color:#1F3A5F;">1 يوم</span></td><td class="px-4 py-2"><span class="notes-cell">موعد طبي</span></td></tr>
+            <tr style="border-bottom:1px solid var(--lp-command-border);"><td class="px-4 py-2 font-medium">شيماء عبدالحميد</td><td class="px-4 py-2"><span class="badge badge-sm" style="background:rgba(139,92,246,.15);color:#7C3AED;border-color:rgba(139,92,246,.4);">مأمورية</span></td><td class="px-4 py-2 text-xs">15 أغسطس 2026 <span class="badge badge-sm" style="background:rgba(31,58,95,.1);color:#1F3A5F;">1 يوم</span></td><td class="px-4 py-2"><span class="notes-cell">هيئة الاعتماد</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ سجل المهام (عينة) ============ -->
+  <section class="w-full max-w-4xl mx-auto px-4 pb-16 reveal reveal-5">
+    <div id="print-area" class="rounded-2xl shadow-xl overflow-hidden marble-card" style="border:1px solid var(--lp-command-border);">
+      <div class="px-6 py-4 flex flex-wrap items-center justify-between gap-2" style="background:linear-gradient(to left,#1F3A5F 0%,#132743 100%);">
+        <div>
+          <h2 class="text-lg md:text-xl font-bold text-white flex items-center gap-2"><i class="fa-solid fa-clipboard-list"></i> Work Task Log</h2>
+          <p class="text-xs mt-1 text-white/70">سجل المهام اليومية — إجمالي 157 مهمة</p>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap no-print">
+          <button onclick="window.print()" class="btn btn-xs" style="background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.35);font-weight:700;"><i class="fa-solid fa-print"></i> طباعة</button>
+        </div>
+      </div>
+
+      <!-- بحث فوري (فلترة الجدول المعروض بس) -->
+      <div class="px-6 pt-4 no-print">
+        <div class="relative">
+          <i class="fa-solid fa-magnifying-glass absolute right-3.5 top-1/2 -translate-y-1/2 text-base" style="color:var(--lp-text-muted);"></i>
+          <input type="text" id="sample-search" placeholder="ابحث في المهام المعروضة... (وصف، قسم، مهندس، ملاحظات)" class="search-input w-full rounded-xl border pr-10 h-11 text-sm" style="background:var(--lp-bg);color:var(--lp-text);border-color:var(--lp-command-border);">
+        </div>
+      </div>
+
+      <div class="px-6 py-2 text-xs" style="color:var(--lp-text-muted);"><i class="fa-solid fa-list-check"></i> عرض <span id="show-count" style="color:var(--lp-text);font-weight:700;">6</span> مهمة (عينة — كل 157 مهمة موجودة في نسخة Rails)</div>
+
+      <div class="overflow-x-auto px-2 pb-4">
+        <table class="task-table w-full text-sm" style="color:var(--lp-text);">
+          <thead><tr style="background:linear-gradient(to left,#1F3A5F 0%,#132743 100%);color:#fff;">
+            <th class="px-4 py-2 text-right font-semibold">التاريخ</th><th class="px-4 py-2 text-right font-semibold">القسم</th>
+            <th class="px-4 py-2 text-right font-semibold">المهمة</th><th class="px-4 py-2 text-right font-semibold">الحالة</th>
+            <th class="px-4 py-2 text-right font-semibold">المهندس المسؤول</th><th class="px-4 py-2 text-right font-semibold">ملاحظات</th>
+          </tr></thead>
+          <tbody id="sample-task-tbody">
+            <tr class="task-row" data-dept="شبكات" data-tech="أمير طلعت" data-desc="تحويل بصمة الحضور والانصراف" data-notes="تم بنجاح" style="border-bottom:1px solid var(--lp-command-border);">
+              <td class="px-4 py-2 whitespace-nowrap"><span class="block text-xs font-bold">الأحد</span><span class="block text-[11px]" style="color:var(--lp-text-muted);">2 أغسطس 2026</span></td>
+              <td class="px-4 py-2 whitespace-nowrap"><span class="badge badge-sm" style="background:rgba(31,58,95,.1);color:#1F3A5F;border-color:rgba(31,58,95,.3);">شبكات</span></td>
+              <td class="px-4 py-2 max-w-[300px]"><span class="desc-cell">تحويل بصمة الحضور والانصراف للموظفين الجدد</span></td>
+              <td class="px-4 py-2 whitespace-nowrap"><span class="badge badge-sm" style="background:rgba(5,150,105,.15);color:#059669;border:1px solid rgba(5,150,105,.4);">تم</span></td>
+              <td class="px-4 py-2 whitespace-nowrap font-medium">أمير طلعت</td>
+              <td class="px-4 py-2"><span class="notes-cell">تم بنجاح</span></td>
+            </tr>
+            <tr class="task-row" data-dept="سيرفرات" data-tech="محمد حنفى" data-desc="عمل نسخة احتياطية من سيرفر الملفات" data-notes="" style="border-bottom:1px solid var(--lp-command-border);">
+              <td class="px-4 py-2 whitespace-nowrap"><span class="block text-xs font-bold">الاثنين</span><span class="block text-[11px]" style="color:var(--lp-text-muted);">3 أغسطس 2026</span></td>
+              <td class="px-4 py-2 whitespace-nowrap"><span class="badge badge-sm" style="background:rgba(37,99,235,.1);color:#2563EB;border-color:rgba(37,99,235,.3);">سيرفرات</span></td>
+              <td class="px-4 py-2 max-w-[300px]"><span class="desc-cell">عمل نسخة احتياطية من سيرفر الملفات الرئيسي</span></td>
+              <td class="px-4 py-2 whitespace-nowrap"><span class="badge badge-sm" style="background:rgba(5,150,105,.15);color:#059669;border:1px solid rgba(5,150,105,.4);">تم</span></td>
+              <td class="px-4 py-2 whitespace-nowrap font-medium">محمد حنفى</td>
+              <td class="px-4 py-2"></td>
+            </tr>
+            <tr class="task-row" data-dept="دعم فني" data-tech="شيماء عبدالحميد" data-desc="إعادة تعيين كلمة مرور لنظام البريد" data-notes="بعد التواصل مع المستخدم" style="border-bottom:1px solid var(--lp-command-border);">
+              <td class="px-4 py-2 whitespace-nowrap"><span class="block text-xs font-bold">الثلاثاء</span><span class="block text-[11px]" style="color:var(--lp-text-muted);">4 أغسطس 2026</span></td>
+              <td class="px-4 py-2 whitespace-nowrap"><span class="badge badge-sm" style="background:rgba(5,150,105,.1);color:#059669;border-color:rgba(5,150,105,.3);">دعم فني</span></td>
+              <td class="px-4 py-2 max-w-[300px]"><span class="desc-cell">إعادة تعيين كلمة مرور لنظام البريد الإلكتروني</span></td>
+              <td class="px-4 py-2 whitespace-nowrap"><span class="badge badge-sm" style="background:rgba(5,150,105,.15);color:#059669;border:1px solid rgba(5,150,105,.4);">تم</span></td>
+              <td class="px-4 py-2 whitespace-nowrap font-medium">شيماء عبدالحميد</td>
+              <td class="px-4 py-2"><span class="notes-cell">بعد التواصل مع المستخدم</span></td>
+            </tr>
+            <tr class="task-row" data-dept="طباعة" data-tech="أمير طلعت" data-desc="إصلاح طابعة الشبكة بالدور الثالث" data-notes="مطلوب متابعة" style="border-bottom:1px solid var(--lp-command-border);">
+              <td class="px-4 py-2 whitespace-nowrap"><span class="block text-xs font-bold">الأربعاء</span><span class="block text-[11px]" style="color:var(--lp-text-muted);">5 أغسطس 2026</span></td>
+              <td class="px-4 py-2 whitespace-nowrap"><span class="badge badge-sm" style="background:rgba(180,83,9,.1);color:#B45309;border-color:rgba(180,83,9,.3);">طباعة</span></td>
+              <td class="px-4 py-2 max-w-[300px]"><span class="desc-cell">إصلاح طابعة الشبكة بالدور الثالث — عطل في وحدة التغذية</span></td>
+              <td class="px-4 py-2 whitespace-nowrap"><span class="badge badge-sm" style="background:rgba(245,158,11,.15);color:#B45309;border:1px solid rgba(245,158,11,.4);">مفتوحة</span></td>
+              <td class="px-4 py-2 whitespace-nowrap font-medium">أمير طلعت</td>
+              <td class="px-4 py-2"><span class="notes-cell">مطلوب متابعة مع الصيانة</span></td>
+            </tr>
+            <tr class="task-row" data-dept="برمجيات" data-tech="محمد حنفى" data-desc="تحديث برنامج الحضور والانصراف" data-notes="" style="border-bottom:1px solid var(--lp-command-border);">
+              <td class="px-4 py-2 whitespace-nowrap"><span class="block text-xs font-bold">الخميس</span><span class="block text-[11px]" style="color:var(--lp-text-muted);">6 أغسطس 2026</span></td>
+              <td class="px-4 py-2 whitespace-nowrap"><span class="badge badge-sm" style="background:rgba(124,58,237,.1);color:#7C3AED;border-color:rgba(124,58,237,.3);">برمجيات</span></td>
+              <td class="px-4 py-2 max-w-[300px]"><span class="desc-cell">تحديث برنامج الحضور والانصراف على أجهزة البوابة</span></td>
+              <td class="px-4 py-2 whitespace-nowrap"><span class="badge badge-sm" style="background:rgba(5,150,105,.15);color:#059669;border:1px solid rgba(5,150,105,.4);">تم</span></td>
+              <td class="px-4 py-2 whitespace-nowrap font-medium">محمد حنفى</td>
+              <td class="px-4 py-2"></td>
+            </tr>
+            <tr class="task-row" data-dept="دعم فني" data-tech="شيماء عبدالحميد" data-desc="توصيل جهاز كمبيوتر جديد بقسم الحسابات" data-notes="بانتظار جهاز آخر" style="border-bottom:1px solid var(--lp-command-border);">
+              <td class="px-4 py-2 whitespace-nowrap"><span class="block text-xs font-bold">السبت</span><span class="block text-[11px]" style="color:var(--lp-text-muted);">8 أغسطس 2026</span></td>
+              <td class="px-4 py-2 whitespace-nowrap"><span class="badge badge-sm" style="background:rgba(5,150,105,.1);color:#059669;border-color:rgba(5,150,105,.3);">دعم فني</span></td>
+              <td class="px-4 py-2 max-w-[300px]"><span class="desc-cell">توصيل جهاز كمبيوتر جديد بقسم الحسابات + تحويل البيانات</span></td>
+              <td class="px-4 py-2 whitespace-nowrap"><span class="badge badge-sm" style="background:rgba(245,158,11,.15);color:#B45309;border:1px solid rgba(245,158,11,.4);">مفتوحة</span></td>
+              <td class="px-4 py-2 whitespace-nowrap font-medium">شيماء عبدالحميد</td>
+              <td class="px-4 py-2"><span class="notes-cell">بانتظار جهاز آخر من التوريدات</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════ كل المودالات ════════════════════════ -->
+
+  
+  <!-- كشف حضور وتشغيل السبت -->
+  <dialog id="saturday-modal" class="modal">
+    <div class="modal-box max-w-2xl" style="background:var(--lp-card-bg);color:var(--lp-text);border:1px solid var(--lp-command-border);">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-bold text-lg flex items-center gap-2"><i class="fa-solid fa-calendar-check text-indigo-500"></i> كشف حضور وتشغيل السبت (النوبتجيات)</h3>
+        <form method="dialog"><button class="btn btn-sm btn-circle btn-ghost">✕</button></form>
+      </div>
+      <p class="text-xs mb-3" style="color:var(--lp-text-muted);">سجل مناوبات العاملين بنظم المعلومات والتطبيقات أيام السبت المعتمدة</p>
+      <div class="overflow-y-auto rounded-xl" style="max-height:55vh;border:1px solid var(--lp-command-border);">
+        <table class="task-table w-full text-sm" style="color:var(--lp-text);">
+          <thead class="sticky top-0 z-10"><tr style="background:linear-gradient(to left,#4F46E5 0%,#312E81 100%);color:#fff;">
+            <th class="px-3 py-2 text-center font-semibold w-12">م</th>
+            <th class="px-3 py-2 text-right font-semibold">اسم الموظف المناوب</th>
+            <th class="px-3 py-2 text-right font-semibold">تاريخ يوم السبت</th>
+            <th class="px-3 py-2 text-right font-semibold">طبيعة المهمة والملاحظات</th>
+          </tr></thead>
+          <tbody>
+            
+            <tr style="border-bottom:1px solid var(--lp-command-border);">
+              <td class="px-3 py-2 text-xs font-mono text-center">1</td>
+              <td class="px-3 py-2 font-bold">أمير طلعت</td>
+              <td class="px-3 py-2 font-mono text-xs"><span class="badge badge-sm bg-amber-500/20 text-amber-500 ml-1">السبت</span> 2026-08-01</td>
+              <td class="px-3 py-2 text-xs">حضور سبت نوبتجية غرفة السيرفرات</td>
+            </tr>
+            
+            <tr style="border-bottom:1px solid var(--lp-command-border);">
+              <td class="px-3 py-2 text-xs font-mono text-center">2</td>
+              <td class="px-3 py-2 font-bold">محمد حنفى</td>
+              <td class="px-3 py-2 font-mono text-xs"><span class="badge badge-sm bg-amber-500/20 text-amber-500 ml-1">السبت</span> 2026-08-01</td>
+              <td class="px-3 py-2 text-xs">حضور سبت نوبتجية الدعم الفني</td>
+            </tr>
+            
+            <tr style="border-bottom:1px solid var(--lp-command-border);">
+              <td class="px-3 py-2 text-xs font-mono text-center">3</td>
+              <td class="px-3 py-2 font-bold">شيماء</td>
+              <td class="px-3 py-2 font-mono text-xs"><span class="badge badge-sm bg-amber-500/20 text-amber-500 ml-1">السبت</span> 2026-08-08</td>
+              <td class="px-3 py-2 text-xs">حضور سبت نوبتجية إدخال بيانات</td>
+            </tr>
+            
+            <tr style="border-bottom:1px solid var(--lp-command-border);">
+              <td class="px-3 py-2 text-xs font-mono text-center">4</td>
+              <td class="px-3 py-2 font-bold">أمير طلعت</td>
+              <td class="px-3 py-2 font-mono text-xs"><span class="badge badge-sm bg-amber-500/20 text-amber-500 ml-1">السبت</span> 2026-08-15</td>
+              <td class="px-3 py-2 text-xs">حضور سبت نوبتجية ومتابعة البصمة</td>
+            </tr>
+            
+            <tr style="border-bottom:1px solid var(--lp-command-border);">
+              <td class="px-3 py-2 text-xs font-mono text-center">5</td>
+              <td class="px-3 py-2 font-bold">شيماء</td>
+              <td class="px-3 py-2 font-mono text-xs"><span class="badge badge-sm bg-amber-500/20 text-amber-500 ml-1">السبت</span> 2026-08-22</td>
+              <td class="px-3 py-2 text-xs">حضور سبت نوبتجية ميكنة</td>
+            </tr>
+            
+            <tr style="border-bottom:1px solid var(--lp-command-border);">
+              <td class="px-3 py-2 text-xs font-mono text-center">6</td>
+              <td class="px-3 py-2 font-bold">محمد حنفى</td>
+              <td class="px-3 py-2 font-mono text-xs"><span class="badge badge-sm bg-amber-500/20 text-amber-500 ml-1">السبت</span> 2026-08-29</td>
+              <td class="px-3 py-2 text-xs">حضور سبت نوبتجية صيانة</td>
+            </tr>
+            
+            <tr style="border-bottom:1px solid var(--lp-command-border);">
+              <td class="px-3 py-2 text-xs font-mono text-center">7</td>
+              <td class="px-3 py-2 font-bold">أمير طلعت</td>
+              <td class="px-3 py-2 font-mono text-xs"><span class="badge badge-sm bg-amber-500/20 text-amber-500 ml-1">السبت</span> 2026-09-05</td>
+              <td class="px-3 py-2 text-xs">حضور سبت نوبتجية تشغيل الخوادم</td>
+            </tr>
+            
+            <tr style="border-bottom:1px solid var(--lp-command-border);">
+              <td class="px-3 py-2 text-xs font-mono text-center">8</td>
+              <td class="px-3 py-2 font-bold">تامر محمد سيد</td>
+              <td class="px-3 py-2 font-mono text-xs"><span class="badge badge-sm bg-amber-500/20 text-amber-500 ml-1">السبت</span> 2026-09-05</td>
+              <td class="px-3 py-2 text-xs">إشراف نوبتجية البنية الأساسية</td>
+            </tr>
+            
+          </tbody>
+        </table>
+      </div>
+      <div class="modal-action flex justify-between items-center mt-4">
+        <a href="/data/saturday_attendances.csv" download class="btn btn-sm btn-outline gap-1 text-xs"><i class="fa-solid fa-download"></i> تحميل كشف السبت CSV</a>
+        <form method="dialog"><button class="btn btn-sm" style="background:#312E81;color:#fff;">إغلاق</button></form>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- مركز تحميل وتصدير البيانات المستقلة -->
+  <dialog id="export-modal" class="modal">
+    <div class="modal-box max-w-xl" style="background:var(--lp-card-bg);color:var(--lp-text);border:1px solid var(--lp-command-border);">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-bold text-lg flex items-center gap-2"><i class="fa-solid fa-database text-indigo-500"></i> مركز تحميل وتصدير البيانات المستقلة (JSON / CSV)</h3>
+        <form method="dialog"><button class="btn btn-sm btn-circle btn-ghost">✕</button></form>
+      </div>
+      <p class="text-xs mb-4" style="color:var(--lp-text-muted);">الملفات المستخرجة مباشرة من قاعدة بيانات النظام بصيغتي JSON و CSV</p>
+      
+      <div class="space-y-3">
+        <!-- Full Backup -->
+        <div class="p-3 rounded-xl" style="background:linear-gradient(135deg,#1E1B4B,#312E81);color:#fff;">
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="font-bold text-sm flex items-center gap-1.5"><i class="fa-solid fa-box-archive text-amber-400"></i> النسخة الشاملة لجميع الجداول</div>
+              <div class="text-[11px] text-indigo-200 mt-0.5">ملف JSON كامل يضم جميع الجداول وسجلات النظام</div>
+            </div>
+            <a href="/data/full_backup.json" download class="btn btn-sm bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold border-none text-xs"><i class="fa-solid fa-download"></i> تحميل كامل (JSON)</a>
+          </div>
+        </div>
+
+        <!-- Tasks -->
+        <div class="p-3 rounded-xl flex items-center justify-between" style="background:rgba(31,58,95,.08);border:1px solid var(--lp-command-border);">
+          <div>
+            <div class="font-bold text-xs">📋 سجل المهام الفنية (Tasks)</div>
+            <div class="text-[11px] opacity-70">182 مهمة دعم فني وتشغيل</div>
+          </div>
+          <div class="flex gap-1.5">
+            <a href="/data/tasks.json" download class="btn btn-xs btn-outline">JSON</a>
+            <a href="/data/tasks.csv" download class="btn btn-xs bg-emerald-600 text-white border-none">CSV (Excel)</a>
+          </div>
+        </div>
+
+        <!-- Directory -->
+        <div class="p-3 rounded-xl flex items-center justify-between" style="background:rgba(31,58,95,.08);border:1px solid var(--lp-command-border);">
+          <div>
+            <div class="font-bold text-xs">☎️ دليل الهواتف والتحويلات (Directory)</div>
+            <div class="text-[11px] opacity-70">104 رقم تحويلة معتمدة</div>
+          </div>
+          <div class="flex gap-1.5">
+            <a href="/data/directory.json" download class="btn btn-xs btn-outline">JSON</a>
+            <a href="/data/directory.csv" download class="btn btn-xs bg-emerald-600 text-white border-none">CSV (Excel)</a>
+          </div>
+        </div>
+
+        <!-- Medical -->
+        <div class="p-3 rounded-xl flex items-center justify-between" style="background:rgba(31,58,95,.08);border:1px solid var(--lp-command-border);">
+          <div>
+            <div class="font-bold text-xs">🏥 الشبكة الطبية (Medical Network)</div>
+            <div class="text-[11px] opacity-70">114 جهة ومستشفى ومعمل</div>
+          </div>
+          <div class="flex gap-1.5">
+            <a href="/data/medical_network.json" download class="btn btn-xs btn-outline">JSON</a>
+            <a href="/data/medical_network.csv" download class="btn btn-xs bg-emerald-600 text-white border-none">CSV (Excel)</a>
+          </div>
+        </div>
+
+        <!-- Saturday -->
+        <div class="p-3 rounded-xl flex items-center justify-between" style="background:rgba(31,58,95,.08);border:1px solid var(--lp-command-border);">
+          <div>
+            <div class="font-bold text-xs">📅 نوبتجيات السبت (Saturday Attendances)</div>
+            <div class="text-[11px] opacity-70">مناوبات وغرفة الخوادم</div>
+          </div>
+          <div class="flex gap-1.5">
+            <a href="/data/saturday_attendances.json" download class="btn btn-xs btn-outline">JSON</a>
+            <a href="/data/saturday_attendances.csv" download class="btn btn-xs bg-emerald-600 text-white border-none">CSV (Excel)</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-action mt-4"><form method="dialog"><button class="btn btn-sm">إغلاق</button></form></div>
+    </div>
+  </dialog>
+  
+  <!-- نوت للتذكير (بيتحفظ في localStorage) -->
+  <dialog id="notes-modal" class="modal">
+    <div class="modal-box" style="background:var(--lp-card-bg);color:var(--lp-text);border:1px solid var(--lp-command-border);">
+      <h3 class="font-bold text-lg mb-1">📌 نوت للتذكير</h3>
+      <p class="text-xs mb-3" style="color:var(--lp-text-muted);">مش هيتقفل لوحده — بيحفظ في متصفحك (localStorage)</p>
+      <textarea id="note-content" rows="4" placeholder="اكتب التذكير هنا..." class="textarea w-full text-sm" style="background:var(--lp-bg);color:var(--lp-text);border-color:var(--lp-command-border);"></textarea>
+      <div class="modal-action">
+        <button class="btn btn-primary btn-sm" onclick="saveNote()">حفظ التذكير</button>
+        <button class="btn btn-error btn-sm hidden" id="note-clear-btn" onclick="clearNote()"><i class="fa-solid fa-trash-can ml-1"></i> مسح التذكير</button>
+        <button class="btn btn-ghost btn-sm" style="color:var(--lp-text);" onclick="document.getElementById('notes-modal').close()">إلغاء</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- عاجل -->
+  <dialog id="urgent-modal" class="modal">
+    <div class="modal-box" style="background:var(--lp-card-bg);color:var(--lp-text);border:1px solid var(--lp-command-border);">
+      <h3 class="font-bold text-lg mb-1">⚡ مهام عاجلة</h3>
+      <p class="text-xs mb-3" style="color:var(--lp-text-muted);">بيحفظ في متصفحك (localStorage)</p>
+      <textarea id="urgent-content" rows="4" placeholder="اكتب المهام العاجلة هنا..." class="textarea w-full text-sm" style="background:var(--lp-bg);color:var(--lp-text);border-color:var(--lp-command-border);"></textarea>
+      <div class="modal-action">
+        <button class="btn btn-primary btn-sm" onclick="saveUrgent()">حفظ العاجل</button>
+        <button class="btn btn-ghost btn-sm" style="color:var(--lp-text);" onclick="document.getElementById('urgent-modal').close()">إلغاء</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- مواعيد الصلاة (وقت ثابت تجريبي + زرار تجربة التنبيه) -->
+  <dialog id="prayer-modal" class="modal">
+    <div class="modal-box" style="background:var(--lp-card-bg);color:var(--lp-text);border:1px solid var(--lp-command-border);">
+      <h3 class="font-bold text-lg mb-3"><i class="fa-solid fa-star-and-crescent"></i> مواعيد الصلاة</h3>
+      <p class="text-xs mb-3" style="color:var(--lp-text-muted);">المواعيد دي تجريبية ثابتة — في نسخة Rails بتتجاب تلقائيًا من الإنترنت كل يوم</p>
+      <div class="modal-action">
+        <button class="btn btn-ghost btn-sm" style="color:var(--lp-text);" onclick="testAdhan(); document.getElementById('prayer-modal').close()">تجربة التنبيه</button>
+        <button class="btn btn-ghost btn-sm" style="color:var(--lp-text);" onclick="document.getElementById('prayer-modal').close()">إغلاق</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- التقويم الشهري + مهام اليوم -->
+  <dialog id="calendar-modal" class="modal">
+    <div class="modal-box rounded-2xl shadow-xl p-0 overflow-hidden" style="background:var(--lp-card-bg);color:var(--lp-text);border:1px solid var(--lp-command-border);max-width:60rem;" dir="rtl">
+      <div class="px-6 py-4 flex flex-wrap items-center justify-between gap-2" style="background:linear-gradient(to left,#1F3A5F 0%,#132743 100%);">
+        <h2 class="text-lg font-bold text-white"><i class="fa-solid fa-calendar-days"></i> التقويم الشهري — <span id="cal-title">—</span></h2>
+        <div class="flex items-center gap-1.5 no-print">
+          <button class="btn btn-xs" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.4);" onclick="calMove(-1)"><i class="fa-solid fa-chevron-right"></i> السابق</button>
+          <button class="btn btn-xs" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.4);" onclick="calMove(1)">التالي <i class="fa-solid fa-chevron-left"></i></button>
+          <form method="dialog"><button class="btn btn-sm btn-circle btn-ghost text-white" style="border:1px solid rgba(255,255,255,.45);">✕</button></form>
+        </div>
+      </div>
+      <div class="p-5">
+        <div class="grid grid-cols-7 gap-1.5 mb-2" id="cal-weekdays"></div>
+        <div class="grid grid-cols-7 gap-1.5" id="cal-grid"></div>
+        <div class="flex flex-wrap items-center gap-3 mt-3 pt-3 no-print" style="border-top:1px dashed var(--lp-command-border);color:var(--lp-text-muted);">
+          <span class="inline-flex items-center gap-1 text-xs"><span class="w-3 h-3 rounded-sm border"></span> بدون مهام</span>
+          <span class="inline-flex items-center gap-1 text-xs"><span class="w-3 h-3 rounded-sm" style="background:rgba(31,58,95,.16);"></span> 1 – 2</span>
+          <span class="inline-flex items-center gap-1 text-xs"><span class="w-3 h-3 rounded-sm" style="background:rgba(31,58,95,.85);"></span> 3 – 5</span>
+          <span class="inline-flex items-center gap-1 text-xs"><span class="w-3 h-3 rounded-sm" style="background:linear-gradient(135deg,#1F3A5F,#2E5A8C);"></span> 6+</span>
+          <span class="inline-flex items-center gap-1 text-xs"><span class="w-3 h-3 rounded-sm" style="box-shadow:0 0 0 2px #F59E0B;"></span> اليوم</span>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- مهام اليوم -->
+  <dialog id="day-tasks-modal" class="modal">
+    <div class="modal-box rounded-2xl shadow-xl p-5" style="background:var(--lp-card-bg);color:var(--lp-text);border:1px solid var(--lp-command-border);max-width:34rem;">
+      <form method="dialog"><button class="btn btn-sm btn-circle btn-ghost absolute left-2 top-2 no-print" style="color:var(--lp-text);">✕</button></form>
+      <h3 id="day-tasks-title" class="text-lg font-bold mb-1">مهام اليوم</h3>
+      <p id="day-tasks-sub" class="text-xs mb-3" style="color:var(--lp-text-muted);"></p>
+      <div id="day-tasks-list" class="space-y-2 max-h-96 overflow-y-auto pe-1"></div>
+      <div class="mt-4 flex justify-end"><form method="dialog"><button class="btn btn-sm" style="background:#1F3A5F;color:#fff;border:none;">إغلاق</button></form></div>
+    </div>
+  </dialog>
+
+  <!-- دليل التليفونات (عينة) -->
+  <dialog id="directory-modal" class="modal">
+    <div class="modal-box max-w-3xl" style="background:var(--lp-card-bg);color:var(--lp-text);border:1px solid var(--lp-command-border);" dir="rtl">
+      <form method="dialog"><button class="btn btn-sm btn-circle btn-ghost absolute left-2 top-2">✕</button></form>
+      <h3 class="font-bold text-lg mb-1"><i class="fa-solid fa-phone"></i> أرقام التليفونات</h3>
+      <p class="text-xs mb-3" style="color:var(--lp-text-muted);">عينة — اكتب للبحث في الإدارة أو الاسم أو الرقم</p>
+      <div class="relative mb-3">
+        <input type="text" id="directory-search" placeholder="ابحث بالاسم أو الإدارة أو رقم التليفون..." class="input input-sm w-full search-input" style="background:var(--lp-bg);color:var(--lp-text);border-color:var(--lp-command-border);padding-right:2.25rem;" autocomplete="off">
+        <i class="fa-solid fa-magnifying-glass absolute right-3 top-1/2 -translate-y-1/2 text-xs" style="color:var(--lp-text-muted);"></i>
+      </div>
+      <div class="overflow-y-auto rounded-xl" style="max-height:55vh;border:1px solid var(--lp-command-border);">
+        <table class="task-table w-full text-sm" style="color:var(--lp-text);">
+          <thead class="sticky top-0 z-10"><tr style="background:linear-gradient(to left,#1F3A5F 0%,#132743 100%);color:#fff;">
+            <th class="px-3 py-2 text-right font-semibold w-10">م</th><th class="px-3 py-2 text-right font-semibold w-16">الرقم</th>
+            <th class="px-3 py-2 text-right font-semibold">الإدارة</th><th class="px-3 py-2 text-right font-semibold">الاسم</th>
+          </tr></thead>
+          <tbody id="directory-tbody">
+<tr class="directory-row" data-dept="الشبكات والصيانة" data-name="محمد فايز" data-code="1231" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">1</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1231</span></td><td class="px-3 py-2">الشبكات والصيانة</td><td class="px-3 py-2 font-medium">محمد فايز</td></tr>
+<tr class="directory-row" data-dept="المكتب الفني" data-name="أميرة عادل - نهله" data-code="1330" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">2</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1330</span></td><td class="px-3 py-2">المكتب الفني</td><td class="px-3 py-2 font-medium">أميرة عادل - نهله</td></tr>
+<tr class="directory-row" data-dept="ادارة الجودة بالميكنة" data-name="هدى" data-code="1009" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">3</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1009</span></td><td class="px-3 py-2">ادارة الجودة بالميكنة</td><td class="px-3 py-2 font-medium">هدى</td></tr>
+<tr class="directory-row" data-dept="رئيس مجلس الإدارة" data-name="لواء. مهندس / عصام النجار" data-code="1110" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">4</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1110</span></td><td class="px-3 py-2">رئيس مجلس الإدارة</td><td class="px-3 py-2 font-medium">لواء. مهندس / عصام النجار</td></tr>
+<tr class="directory-row" data-dept="رئيس قطاع الفروع" data-name="مكتب رئيس قطاع الفروع" data-code="1211" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">5</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1211</span></td><td class="px-3 py-2">رئيس قطاع الفروع</td><td class="px-3 py-2 font-medium">مكتب رئيس قطاع الفروع</td></tr>
+<tr class="directory-row" data-dept="رئيس قطاع العمليات" data-name="م. محسن شعيب" data-code="1170" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">6</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1170</span></td><td class="px-3 py-2">رئيس قطاع العمليات</td><td class="px-3 py-2 font-medium">م. محسن شعيب</td></tr>
+<tr class="directory-row" data-dept="رئيس الإدارة المركزية للشئون المالية والإدارية" data-name="لواء / عماد شوقى" data-code="1860" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">7</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1860</span></td><td class="px-3 py-2">رئيس الإدارة المركزية للشئون المالية والإدارية</td><td class="px-3 py-2 font-medium">لواء / عماد شوقى</td></tr>
+<tr class="directory-row" data-dept="رئيس الإدارة المركزية للموارد البشرية" data-name="د. إيمان النحاس" data-code="1891" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">8</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1891</span></td><td class="px-3 py-2">رئيس الإدارة المركزية للموارد البشرية</td><td class="px-3 py-2 font-medium">د. إيمان النحاس</td></tr>
+<tr class="directory-row" data-dept="رئيس الإدارة المركزية لشئون الواردات للسلع الصناعية" data-name="د. داليا شهاب الدين" data-code="1510" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">9</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1510</span></td><td class="px-3 py-2">رئيس الإدارة المركزية لشئون الواردات للسلع الصناعية</td><td class="px-3 py-2 font-medium">د. داليا شهاب الدين</td></tr>
+<tr class="directory-row" data-dept="رئيس الإدارة المركزية لشئون الصادرات والملحقات" data-name="م. هانى ممدوح" data-code="1310" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">10</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1310</span></td><td class="px-3 py-2">رئيس الإدارة المركزية لشئون الصادرات والملحقات</td><td class="px-3 py-2 font-medium">م. هانى ممدوح</td></tr>
+<tr class="directory-row" data-dept="رئيس الإدارة المركزية لشئون مكتب رئيس مجلس الإدارة" data-name="أ. أحمد نصر" data-code="1410" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">11</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1410</span></td><td class="px-3 py-2">رئيس الإدارة المركزية لشئون مكتب رئيس مجلس الإدارة</td><td class="px-3 py-2 font-medium">أ. أحمد نصر</td></tr>
+<tr class="directory-row" data-dept="رئيس الإدارة المركزية لفرع المطار" data-name="لواء.م / أيمن عبد الفتاح" data-code="1019" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">12</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1019</span></td><td class="px-3 py-2">رئيس الإدارة المركزية لفرع المطار</td><td class="px-3 py-2 font-medium">لواء.م / أيمن عبد الفتاح</td></tr>
+<tr class="directory-row" data-dept="رئيس الإدارة المركزية للمعامل الصناعية" data-name="مكتب المعامل الصناعية" data-code="1021" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">13</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1021</span></td><td class="px-3 py-2">رئيس الإدارة المركزية للمعامل الصناعية</td><td class="px-3 py-2 font-medium">مكتب المعامل الصناعية</td></tr>
+<tr class="directory-row" data-dept="رئيس الإدارة المركزية للمعامل الكيميائية والغذائية" data-name="د. سحر عطية" data-code="1610" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">14</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1610</span></td><td class="px-3 py-2">رئيس الإدارة المركزية للمعامل الكيميائية والغذائية</td><td class="px-3 py-2 font-medium">د. سحر عطية</td></tr>
+<tr class="directory-row" data-dept="الإدارة المركزية لنظم المعلومات والتحول الرقمي" data-name="أ. محمد أحمد" data-code="1210" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">15</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1210</span></td><td class="px-3 py-2">الإدارة المركزية لنظم المعلومات والتحول الرقمي</td><td class="px-3 py-2 font-medium">أ. محمد أحمد</td></tr>
+<tr class="directory-row" data-dept="رئيس الإدارة المركزية لمركز التميز" data-name="د. رحاب صادق" data-code="1201" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">16</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1201</span></td><td class="px-3 py-2">رئيس الإدارة المركزية لمركز التميز</td><td class="px-3 py-2 font-medium">د. رحاب صادق</td></tr>
+<tr class="directory-row" data-dept="مدير عام الشئون الإدارية" data-name="د. مها محمد عبدالحميد" data-code="1820" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">17</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1820</span></td><td class="px-3 py-2">مدير عام الشئون الإدارية</td><td class="px-3 py-2 font-medium">د. مها محمد عبدالحميد</td></tr>
+<tr class="directory-row" data-dept="مدير عام الشئون المالية" data-name="أ. عبدالمستار مندور" data-code="1879" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">18</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1879</span></td><td class="px-3 py-2">مدير عام الشئون المالية</td><td class="px-3 py-2 font-medium">أ. عبدالمستار مندور</td></tr>
+<tr class="directory-row" data-dept="مدير عام التعاقدات والمخازن" data-name="أ. صالح محمود شحات" data-code="1051" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">19</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1051</span></td><td class="px-3 py-2">مدير عام التعاقدات والمخازن</td><td class="px-3 py-2 font-medium">أ. صالح محمود شحات</td></tr>
+<tr class="directory-row" data-dept="مستشار رئيس مجلس الإدارة للأمن" data-name="أ. طارق أيوب" data-code="1150" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">20</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1150</span></td><td class="px-3 py-2">مستشار رئيس مجلس الإدارة للأمن</td><td class="px-3 py-2 font-medium">أ. طارق أيوب</td></tr>
+<tr class="directory-row" data-dept="مدير عام إدارة الجودة" data-name="أ. مروة" data-code="1136" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">21</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1136</span></td><td class="px-3 py-2">مدير عام إدارة الجودة</td><td class="px-3 py-2 font-medium">أ. مروة</td></tr>
+<tr class="directory-row" data-dept="مدير مكتب رئيس مجلس الإدارة" data-name="أ. محمد شريف" data-code="1100" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">22</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1100</span></td><td class="px-3 py-2">مدير مكتب رئيس مجلس الإدارة</td><td class="px-3 py-2 font-medium">أ. محمد شريف</td></tr>
+<tr class="directory-row" data-dept="مدير عام الشئون المالية والإدارية بمركز التميز" data-name="إدارة مركز التميز" data-code="1900" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">23</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1900</span></td><td class="px-3 py-2">مدير عام الشئون المالية والإدارية بمركز التميز</td><td class="px-3 py-2 font-medium">إدارة مركز التميز</td></tr>
+<tr class="directory-row" data-dept="مدير عام عمليات الموارد البشرية" data-name="أ. أحمد حسين" data-code="1870" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">24</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1870</span></td><td class="px-3 py-2">مدير عام عمليات الموارد البشرية</td><td class="px-3 py-2 font-medium">أ. أحمد حسين</td></tr>
+<tr class="directory-row" data-dept="مدير عام البنية الأساسية وتأمين المعلومات" data-name="أ. تامر محمد سيد" data-code="1240" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">25</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1240</span></td><td class="px-3 py-2">مدير عام البنية الأساسية وتأمين المعلومات</td><td class="px-3 py-2 font-medium">أ. تامر محمد سيد</td></tr>
+<tr class="directory-row" data-dept="مدير عام الاحصاء والتقارير والنشر الإلكتروني" data-name="إدارة الإحصاء والتقارير" data-code="1230" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">26</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1230</span></td><td class="px-3 py-2">مدير عام الاحصاء والتقارير والنشر الإلكتروني</td><td class="px-3 py-2 font-medium">إدارة الإحصاء والتقارير</td></tr>
+<tr class="directory-row" data-dept="مدير عام النظم والتطبيقات والدعم الفنى" data-name="إدارة النظم والدعم الفني" data-code="1250" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">27</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1250</span></td><td class="px-3 py-2">مدير عام النظم والتطبيقات والدعم الفنى</td><td class="px-3 py-2 font-medium">إدارة النظم والدعم الفني</td></tr>
+<tr class="directory-row" data-dept="مدير عام العلاقات العامة وخدمة المواطنين" data-name="إدارة العلاقات العامة" data-code="1810" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">28</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1810</span></td><td class="px-3 py-2">مدير عام العلاقات العامة وخدمة المواطنين</td><td class="px-3 py-2 font-medium">إدارة العلاقات العامة</td></tr>
+<tr class="directory-row" data-dept="مدير عام التطوير المؤسسي" data-name="إدارة التطوير المؤسسي" data-code="1313" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">29</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1313</span></td><td class="px-3 py-2">مدير عام التطوير المؤسسي</td><td class="px-3 py-2 font-medium">إدارة التطوير المؤسسي</td></tr>
+<tr class="directory-row" data-dept="مدير عام الأمن" data-name="لواء / ياسر" data-code="1800" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">30</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1800</span></td><td class="px-3 py-2">مدير عام الأمن</td><td class="px-3 py-2 font-medium">لواء / ياسر</td></tr>
+<tr class="directory-row" data-dept="المكتب الفني" data-name="عمر حسين" data-code="1330" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">31</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1330</span></td><td class="px-3 py-2">المكتب الفني</td><td class="px-3 py-2 font-medium">عمر حسين</td></tr>
+<tr class="directory-row" data-dept="المكتب الفني لرئيس قطاع الفروع" data-name="المكتب الفني" data-code="1125" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">32</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1125</span></td><td class="px-3 py-2">المكتب الفني لرئيس قطاع الفروع</td><td class="px-3 py-2 font-medium">المكتب الفني</td></tr>
+<tr class="directory-row" data-dept="مدير عام الاتفاقيات التجارية والتحقق" data-name="أ. شيرين نبيل" data-code="1327" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">33</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1327</span></td><td class="px-3 py-2">مدير عام الاتفاقيات التجارية والتحقق</td><td class="px-3 py-2 font-medium">أ. شيرين نبيل</td></tr>
+<tr class="directory-row" data-dept="مدير عام لشئون الصادرات" data-name="أ. أحمد نبيه" data-code="1321" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">34</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1321</span></td><td class="px-3 py-2">مدير عام لشئون الصادرات</td><td class="px-3 py-2 font-medium">أ. أحمد نبيه</td></tr>
+<tr class="directory-row" data-dept="مدير عام لشهادات المنشأ" data-name="أ. شيرين" data-code="1320" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">35</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1320</span></td><td class="px-3 py-2">مدير عام لشهادات المنشأ</td><td class="px-3 py-2 font-medium">أ. شيرين</td></tr>
+<tr class="directory-row" data-dept="الإدارة العامة للمراجعة الداخلية والحوكمة" data-name="إدارة المراجعة والحوكمة" data-code="6100" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">36</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">6100</span></td><td class="px-3 py-2">الإدارة العامة للمراجعة الداخلية والحوكمة</td><td class="px-3 py-2 font-medium">إدارة المراجعة والحوكمة</td></tr>
+<tr class="directory-row" data-dept="الإدارة المركزية لشئون الواردات للسلع الصناعية" data-name="إدارة الواردات" data-code="1523" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">37</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1523</span></td><td class="px-3 py-2">الإدارة المركزية لشئون الواردات للسلع الصناعية</td><td class="px-3 py-2 font-medium">إدارة الواردات</td></tr>
+<tr class="directory-row" data-dept="مدير عام العلاقات العامة وخدمة المواطنين" data-name="خدمة المواطنين" data-code="1268" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">38</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1268</span></td><td class="px-3 py-2">مدير عام العلاقات العامة وخدمة المواطنين</td><td class="px-3 py-2 font-medium">خدمة المواطنين</td></tr>
+<tr class="directory-row" data-dept="العلاقات العامة" data-name="أ. وليد" data-code="1270" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">39</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1270</span></td><td class="px-3 py-2">العلاقات العامة</td><td class="px-3 py-2 font-medium">أ. وليد</td></tr>
+<tr class="directory-row" data-dept="العلاقات العامة" data-name="أ. فاطمة" data-code="1265" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">40</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1265</span></td><td class="px-3 py-2">العلاقات العامة</td><td class="px-3 py-2 font-medium">أ. فاطمة</td></tr>
+<tr class="directory-row" data-dept="الإدارة العامة للعلاقات العامة وخدمة المواطنين" data-name="أ. رشا" data-code="1273" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">41</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1273</span></td><td class="px-3 py-2">الإدارة العامة للعلاقات العامة وخدمة المواطنين</td><td class="px-3 py-2 font-medium">أ. رشا</td></tr>
+<tr class="directory-row" data-dept="العلاقات العامة" data-name="أ. مروة" data-code="1272" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">42</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1272</span></td><td class="px-3 py-2">العلاقات العامة</td><td class="px-3 py-2 font-medium">أ. مروة</td></tr>
+<tr class="directory-row" data-dept="العلاقات العامة" data-name="أ. نسرين" data-code="1266" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">43</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1266</span></td><td class="px-3 py-2">العلاقات العامة</td><td class="px-3 py-2 font-medium">أ. نسرين</td></tr>
+<tr class="directory-row" data-dept="العلاقات العامة" data-name="أ. محمد الطحاوى" data-code="1264" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">44</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1264</span></td><td class="px-3 py-2">العلاقات العامة</td><td class="px-3 py-2 font-medium">أ. محمد الطحاوى</td></tr>
+<tr class="directory-row" data-dept="إدارة خدمة المواطنين" data-name="أ. محمد إسماعيل" data-code="1184" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">45</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1184</span></td><td class="px-3 py-2">إدارة خدمة المواطنين</td><td class="px-3 py-2 font-medium">أ. محمد إسماعيل</td></tr>
+<tr class="directory-row" data-dept="مندوب وزارة المالية" data-name="مكتب مندوب المالية" data-code="1836" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">46</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1836</span></td><td class="px-3 py-2">مندوب وزارة المالية</td><td class="px-3 py-2 font-medium">مكتب مندوب المالية</td></tr>
+<tr class="directory-row" data-dept="مدير عام المراجعة الداخلية والحوكمة" data-name="أ. عمرو مصطفى" data-code="1426" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">47</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1426</span></td><td class="px-3 py-2">مدير عام المراجعة الداخلية والحوكمة</td><td class="px-3 py-2 font-medium">أ. عمرو مصطفى</td></tr>
+<tr class="directory-row" data-dept="مدير عام الاستحقاقات والمزايا" data-name="أ. هبة يسرى" data-code="1874" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">48</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1874</span></td><td class="px-3 py-2">مدير عام الاستحقاقات والمزايا</td><td class="px-3 py-2 font-medium">أ. هبة يسرى</td></tr>
+<tr class="directory-row" data-dept="مدير عام المكتب الفنى" data-name="أ. أحمد صبرى" data-code="1950" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">49</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1950</span></td><td class="px-3 py-2">مدير عام المكتب الفنى</td><td class="px-3 py-2 font-medium">أ. أحمد صبرى</td></tr>
+<tr class="directory-row" data-dept="مدير عام المتابعة" data-name="د. خديجة" data-code="2153" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">50</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">2153</span></td><td class="px-3 py-2">مدير عام المتابعة</td><td class="px-3 py-2 font-medium">د. خديجة</td></tr>
+<tr class="directory-row" data-dept="مدير إدارة السيارات" data-name="أ. سعيد عراض معوض" data-code="1887" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">51</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1887</span></td><td class="px-3 py-2">مدير إدارة السيارات</td><td class="px-3 py-2 font-medium">أ. سعيد عراض معوض</td></tr>
+<tr class="directory-row" data-dept="غرفة السيرفر وتأمين المعلومات" data-name="أ. أمير" data-code="1222" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">52</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1222</span></td><td class="px-3 py-2">غرفة السيرفر وتأمين المعلومات</td><td class="px-3 py-2 font-medium">أ. أمير</td></tr>
+<tr class="directory-row" data-dept="إدارة تسجيل الأسهم" data-name="أ. محمد عبدالخالق" data-code="1093" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">53</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1093</span></td><td class="px-3 py-2">إدارة تسجيل الأسهم</td><td class="px-3 py-2 font-medium">أ. محمد عبدالخالق</td></tr>
+<tr class="directory-row" data-dept="سكرتارية رئيس الهيئة" data-name="السكرتارية" data-code="1126" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">54</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1126</span></td><td class="px-3 py-2">سكرتارية رئيس الهيئة</td><td class="px-3 py-2 font-medium">السكرتارية</td></tr>
+<tr class="directory-row" data-dept="إدارة التعاقدات" data-name="التعاقدات والمناقصات" data-code="1852" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">55</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1852</span></td><td class="px-3 py-2">إدارة التعاقدات</td><td class="px-3 py-2 font-medium">التعاقدات والمناقصات</td></tr>
+<tr class="directory-row" data-dept="إدارة حقوق مزايا العاملين" data-name="أ. عبير" data-code="1843" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">56</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1843</span></td><td class="px-3 py-2">إدارة حقوق مزايا العاملين</td><td class="px-3 py-2 font-medium">أ. عبير</td></tr>
+<tr class="directory-row" data-dept="الخدمات الإدارية" data-name="أ. محمد محمود" data-code="1015" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">57</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1015</span></td><td class="px-3 py-2">الخدمات الإدارية</td><td class="px-3 py-2 font-medium">أ. محمد محمود</td></tr>
+<tr class="directory-row" data-dept="الإدارة العامة للتطوير المؤسسي" data-name="التطوير المؤسسي" data-code="1881" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">58</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1881</span></td><td class="px-3 py-2">الإدارة العامة للتطوير المؤسسي</td><td class="px-3 py-2 font-medium">التطوير المؤسسي</td></tr>
+<tr class="directory-row" data-dept="مدير إدارة وثائق الخدمة" data-name="أ. تامر وداعة" data-code="1890" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">59</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1890</span></td><td class="px-3 py-2">مدير إدارة وثائق الخدمة</td><td class="px-3 py-2 font-medium">أ. تامر وداعة</td></tr>
+<tr class="directory-row" data-dept="إدارة الاجازات" data-name="أ. أحمد طلعت" data-code="1898" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">60</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1898</span></td><td class="px-3 py-2">إدارة الاجازات</td><td class="px-3 py-2 font-medium">أ. أحمد طلعت</td></tr>
+<tr class="directory-row" data-dept="مدير إدارة موازنة الوظائف" data-name="أ. زينب بيومي" data-code="1878" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">61</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1878</span></td><td class="px-3 py-2">مدير إدارة موازنة الوظائف</td><td class="px-3 py-2 font-medium">أ. زينب بيومي</td></tr>
+<tr class="directory-row" data-dept="إدارة المعاشات" data-name="شئون المعاشات" data-code="1856" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">62</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1856</span></td><td class="px-3 py-2">إدارة المعاشات</td><td class="px-3 py-2 font-medium">شئون المعاشات</td></tr>
+<tr class="directory-row" data-dept="إدارة الأضابير" data-name="أ. حسن عبدالمجيد" data-code="1858" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">63</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1858</span></td><td class="px-3 py-2">إدارة الأضابير</td><td class="px-3 py-2 font-medium">أ. حسن عبدالمجيد</td></tr>
+<tr class="directory-row" data-dept="إدارة البحوث المالية" data-name="البحوث المالية" data-code="1901" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">64</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1901</span></td><td class="px-3 py-2">إدارة البحوث المالية</td><td class="px-3 py-2 font-medium">البحوث المالية</td></tr>
+<tr class="directory-row" data-dept="إدارة ميكنة الشئون المالية ( الدفع الإلكتروني )" data-name="أ. تيسير" data-code="1844" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">65</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1844</span></td><td class="px-3 py-2">إدارة ميكنة الشئون المالية ( الدفع الإلكتروني )</td><td class="px-3 py-2 font-medium">أ. تيسير</td></tr>
+<tr class="directory-row" data-dept="إدارة الشطب" data-name="الشطب والمطابقات" data-code="1846" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">66</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1846</span></td><td class="px-3 py-2">إدارة الشطب</td><td class="px-3 py-2 font-medium">الشطب والمطابقات</td></tr>
+<tr class="directory-row" data-dept="إدارة الإيرادات" data-name="أ. نجوى" data-code="1833" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">67</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1833</span></td><td class="px-3 py-2">إدارة الإيرادات</td><td class="px-3 py-2 font-medium">أ. نجوى</td></tr>
+<tr class="directory-row" data-dept="إدارة الميزانية" data-name="أ. أنور" data-code="1835" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">68</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1835</span></td><td class="px-3 py-2">إدارة الميزانية</td><td class="px-3 py-2 font-medium">أ. أنور</td></tr>
+<tr class="directory-row" data-dept="إدارة التسويات" data-name="أ. إليشع" data-code="1826" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">69</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1826</span></td><td class="px-3 py-2">إدارة التسويات</td><td class="px-3 py-2 font-medium">أ. إليشع</td></tr>
+<tr class="directory-row" data-dept="إدارة المراجعة" data-name="أ. وائل" data-code="1829" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">70</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1829</span></td><td class="px-3 py-2">إدارة المراجعة</td><td class="px-3 py-2 font-medium">أ. وائل</td></tr>
+<tr class="directory-row" data-dept="الإدارة العامة للتخطيط وتنفيذ برامج بناء القدرات" data-name="بناء القدرات" data-code="1902" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">71</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1902</span></td><td class="px-3 py-2">الإدارة العامة للتخطيط وتنفيذ برامج بناء القدرات</td><td class="px-3 py-2 font-medium">بناء القدرات</td></tr>
+<tr class="directory-row" data-dept="الإدارة العامة للتخطيط وتنفيذ برامج بناء القدرات" data-name="أ. أسماء الجندى" data-code="1921 (1444)" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">72</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1921 (1444)</span></td><td class="px-3 py-2">الإدارة العامة للتخطيط وتنفيذ برامج بناء القدرات</td><td class="px-3 py-2 font-medium">أ. أسماء الجندى</td></tr>
+<tr class="directory-row" data-dept="إدارة الخزينة والتحصيل" data-name="أ. هاني زكريا" data-code="1839" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">73</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1839</span></td><td class="px-3 py-2">إدارة الخزينة والتحصيل</td><td class="px-3 py-2 font-medium">أ. هاني زكريا</td></tr>
+<tr class="directory-row" data-dept="الإدارة الهندسية ١" data-name="م. عاطف حسين باهي" data-code="1889" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">74</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1889</span></td><td class="px-3 py-2">الإدارة الهندسية ١</td><td class="px-3 py-2 font-medium">م. عاطف حسين باهي</td></tr>
+<tr class="directory-row" data-dept="الإدارة الهندسية ٢" data-name="م. شريف سعيد" data-code="1813" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">75</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1813</span></td><td class="px-3 py-2">الإدارة الهندسية ٢</td><td class="px-3 py-2 font-medium">م. شريف سعيد</td></tr>
+<tr class="directory-row" data-dept="مدير إدارة الأرشيف الإلكتروني" data-name="م. بيشوى عونى" data-code="1102" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">76</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1102</span></td><td class="px-3 py-2">مدير إدارة الأرشيف الإلكتروني</td><td class="px-3 py-2 font-medium">م. بيشوى عونى</td></tr>
+<tr class="directory-row" data-dept="مدير إدارة الخدمات الإدارية" data-name="أ. هناء عبدالله" data-code="1819" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">77</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1819</span></td><td class="px-3 py-2">مدير إدارة الخدمات الإدارية</td><td class="px-3 py-2 font-medium">أ. هناء عبدالله</td></tr>
+<tr class="directory-row" data-dept="مدير إدارة شئون المقر" data-name="م. رباب عبد الجواد" data-code="2030" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">78</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">2030</span></td><td class="px-3 py-2">مدير إدارة شئون المقر</td><td class="px-3 py-2 font-medium">م. رباب عبد الجواد</td></tr>
+<tr class="directory-row" data-dept="إدارة الصادر والوارد" data-name="أ. دلال إبراهيم" data-code="1818" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">79</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1818</span></td><td class="px-3 py-2">إدارة الصادر والوارد</td><td class="px-3 py-2 font-medium">أ. دلال إبراهيم</td></tr>
+<tr class="directory-row" data-dept="إدارة الصيانة" data-name="أ. طارق ناظم" data-code="1814" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">80</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1814</span></td><td class="px-3 py-2">إدارة الصيانة</td><td class="px-3 py-2 font-medium">أ. طارق ناظم</td></tr>
+<tr class="directory-row" data-dept="العيادة الطبية" data-name="أ. نسرين متولى" data-code="1905" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">81</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1905</span></td><td class="px-3 py-2">العيادة الطبية</td><td class="px-3 py-2 font-medium">أ. نسرين متولى</td></tr>
+<tr class="directory-row" data-dept="إدارة المخازن ١" data-name="أ. دعاء" data-code="1855" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">82</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1855</span></td><td class="px-3 py-2">إدارة المخازن ١</td><td class="px-3 py-2 font-medium">أ. دعاء</td></tr>
+<tr class="directory-row" data-dept="إدارة المخازن ٢" data-name="أ. محمود طه" data-code="1850" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">83</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1850</span></td><td class="px-3 py-2">إدارة المخازن ٢</td><td class="px-3 py-2 font-medium">أ. محمود طه</td></tr>
+<tr class="directory-row" data-dept="سكرتارية رئيس الإدارة المركزية للشئون المالية والإدارية" data-name="أ. شعبان عبدالعال" data-code="1823" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">84</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1823</span></td><td class="px-3 py-2">سكرتارية رئيس الإدارة المركزية للشئون المالية والإدارية</td><td class="px-3 py-2 font-medium">أ. شعبان عبدالعال</td></tr>
+<tr class="directory-row" data-dept="سكرتارية رئيس الإدارة المركزية لتكنولوجيا المعلومات" data-name="أ. أمل حسانين" data-code="1200" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">85</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1200</span></td><td class="px-3 py-2">سكرتارية رئيس الإدارة المركزية لتكنولوجيا المعلومات</td><td class="px-3 py-2 font-medium">أ. أمل حسانين</td></tr>
+<tr class="directory-row" data-dept="سكرتارية رئيس الإدارة المركزية للموارد البشرية" data-name="أ. سيد عبدالله" data-code="1872" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">86</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1872</span></td><td class="px-3 py-2">سكرتارية رئيس الإدارة المركزية للموارد البشرية</td><td class="px-3 py-2 font-medium">أ. سيد عبدالله</td></tr>
+<tr class="directory-row" data-dept="سكرتارية مدير عام الشئون المالية" data-name="أ. جيهان" data-code="1839" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">87</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1839</span></td><td class="px-3 py-2">سكرتارية مدير عام الشئون المالية</td><td class="px-3 py-2 font-medium">أ. جيهان</td></tr>
+<tr class="directory-row" data-dept="سكرتارية مدير عام عمليات الموارد البشرية" data-name="أ. ناهد السيد بكرى" data-code="1882" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">88</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1882</span></td><td class="px-3 py-2">سكرتارية مدير عام عمليات الموارد البشرية</td><td class="px-3 py-2 font-medium">أ. ناهد السيد بكرى</td></tr>
+<tr class="directory-row" data-dept="إدارة السيارات" data-name="حركة السيارات" data-code="1896" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">89</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1896</span></td><td class="px-3 py-2">إدارة السيارات</td><td class="px-3 py-2 font-medium">حركة السيارات</td></tr>
+<tr class="directory-row" data-dept="سكرتارية رئيس الإدارة المركزية لفرع المطار" data-name="سكرتارية المطار" data-code="1025" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">90</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1025</span></td><td class="px-3 py-2">سكرتارية رئيس الإدارة المركزية لفرع المطار</td><td class="px-3 py-2 font-medium">سكرتارية المطار</td></tr>
+<tr class="directory-row" data-dept="مدير عام الصادرات فرع المطار" data-name="د/ زيدد عبدالراضى" data-code="1199" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">91</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1199</span></td><td class="px-3 py-2">مدير عام الصادرات فرع المطار</td><td class="px-3 py-2 font-medium">د/ زيدد عبدالراضى</td></tr>
+<tr class="directory-row" data-dept="مدير عام الواردات الغذائية فرع المطار" data-name="أ. داليا السيد" data-code="1023" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">92</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1023</span></td><td class="px-3 py-2">مدير عام الواردات الغذائية فرع المطار</td><td class="px-3 py-2 font-medium">أ. داليا السيد</td></tr>
+<tr class="directory-row" data-dept="سكرتارية مدير عام التعاقدات" data-name="أ. أحلام" data-code="1144" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">93</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1144</span></td><td class="px-3 py-2">سكرتارية مدير عام التعاقدات</td><td class="px-3 py-2 font-medium">أ. أحلام</td></tr>
+<tr class="directory-row" data-dept="الإدارة المركزية لشئون الواردات للسلع الصناعية" data-name="أ. شريف" data-code="2160" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">94</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">2160</span></td><td class="px-3 py-2">الإدارة المركزية لشئون الواردات للسلع الصناعية</td><td class="px-3 py-2 font-medium">أ. شريف</td></tr>
+<tr class="directory-row" data-dept="سكرتارية مدير عام الشئون الإدارية" data-name="أ. أشرف فودة" data-code="1859" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">95</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1859</span></td><td class="px-3 py-2">سكرتارية مدير عام الشئون الإدارية</td><td class="px-3 py-2 font-medium">أ. أشرف فودة</td></tr>
+<tr class="directory-row" data-dept="الإدارة العامة للأمن" data-name="أ. محمد على" data-code="1049" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">96</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1049</span></td><td class="px-3 py-2">الإدارة العامة للأمن</td><td class="px-3 py-2 font-medium">أ. محمد على</td></tr>
+<tr class="directory-row" data-dept="الإدارة العامة للأمن" data-name="أ. صلاح حافظ" data-code="1152" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">97</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1152</span></td><td class="px-3 py-2">الإدارة العامة للأمن</td><td class="px-3 py-2 font-medium">أ. صلاح حافظ</td></tr>
+<tr class="directory-row" data-dept="إدارة الأمن" data-name="البوابة الرئيسية" data-code="1180" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">98</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1180</span></td><td class="px-3 py-2">إدارة الأمن</td><td class="px-3 py-2 font-medium">البوابة الرئيسية</td></tr>
+<tr class="directory-row" data-dept="الإدارة المركزية للمعامل الكيميائية والغذائية" data-name="أ. سمير شوقى" data-code="1008" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">99</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1008</span></td><td class="px-3 py-2">الإدارة المركزية للمعامل الكيميائية والغذائية</td><td class="px-3 py-2 font-medium">أ. سمير شوقى</td></tr>
+<tr class="directory-row" data-dept="السلع الصناعية فرع المطار" data-name="فرع المطار" data-code="1544" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">100</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1544</span></td><td class="px-3 py-2">السلع الصناعية فرع المطار</td><td class="px-3 py-2 font-medium">فرع المطار</td></tr>
+<tr class="directory-row" data-dept="الرعاية الطبية" data-name="أ. أحمد عنتر" data-code="2156" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">101</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">2156</span></td><td class="px-3 py-2">الرعاية الطبية</td><td class="px-3 py-2 font-medium">أ. أحمد عنتر</td></tr>
+<tr class="directory-row" data-dept="البوفيه" data-name="شريف" data-code="1999" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">102</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1999</span></td><td class="px-3 py-2">البوفيه</td><td class="px-3 py-2 font-medium">شريف</td></tr>
+<tr class="directory-row" data-dept="البوفيه الدور الثاني" data-name="أ. عماد" data-code="1777" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">103</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1777</span></td><td class="px-3 py-2">البوفيه الدور الثاني</td><td class="px-3 py-2 font-medium">أ. عماد</td></tr>
+<tr class="directory-row" data-dept="مدير مكتب رئيس قطاع العمليات" data-name="وليد" data-code="1140" style="border-bottom:1px solid var(--lp-command-border);"><td class="px-3 py-2 text-xs font-mono text-center">104</td><td class="px-3 py-2"><span class="badge badge-sm font-mono font-bold" style="background:rgba(31,58,95,.15);color:#1F3A5F;">1140</span></td><td class="px-3 py-2">مدير مكتب رئيس قطاع العمليات</td><td class="px-3 py-2 font-medium">وليد</td></tr>
+</tbody>
+        </table>
+      </div>
+      <p class="text-xs mt-2 font-semibold" id="directory-count" style="color:var(--lp-text-muted);">عرض 104 من 104 رقم تحويلة معتمدة</p>
+      <div class="modal-action"><form method="dialog"><button class="btn btn-sm" style="background:#1F3A5F;color:#fff;border:none;">إغلاق</button></form></div>
+    </div>
+  </dialog>
+
+  <!-- آلة حاسبة -->
+  <dialog id="calc-modal" class="modal">
+    <div class="modal-box rounded-2xl" style="background:var(--lp-card-bg);color:var(--lp-text);border:1px solid var(--lp-command-border);max-width:22rem;" dir="rtl">
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="font-bold text-lg"><i class="fa-solid fa-calculator"></i> آلة حاسبة</h3>
+        <form method="dialog"><button class="btn btn-sm btn-circle btn-ghost" style="color:var(--lp-text);">✕</button></form>
+      </div>
+      <div class="rounded-xl px-4 py-3 mb-3 text-left overflow-hidden" dir="ltr" style="background:#132743;color:#fff;">
+        <div id="calc-history" class="text-xs truncate" style="color:rgba(255,255,255,.55);min-height:1rem;"></div>
+        <div id="calc-display" class="text-3xl font-bold break-all leading-snug">0</div>
+      </div>
+      <div class="grid grid-cols-4 gap-2" dir="ltr">
+        <button type="button" data-calc="clear" class="h-12 rounded-xl text-lg font-bold text-white" style="background:#EF4444;border:none;">C</button>
+        <button type="button" data-calc="back" class="h-12 rounded-xl text-lg font-bold" style="background:rgba(31,58,95,.12);color:var(--lp-text);border:1px solid var(--lp-command-border);"><i class="fa-solid fa-delete-left"></i></button>
+        <button type="button" data-calc="percent" class="h-12 rounded-xl text-lg font-bold" style="background:rgba(31,58,95,.12);color:var(--lp-text);border:1px solid var(--lp-command-border);">%</button>
+        <button type="button" data-calc="÷" class="h-12 rounded-xl text-xl font-bold" style="background:#F59E0B;color:#132743;border:none;">÷</button>
+        <button type="button" data-calc="7" class="h-12 rounded-xl text-xl font-bold" style="background:var(--lp-bg);color:var(--lp-text);border:1px solid var(--lp-command-border);">7</button>
+        <button type="button" data-calc="8" class="h-12 rounded-xl text-xl font-bold" style="background:var(--lp-bg);color:var(--lp-text);border:1px solid var(--lp-command-border);">8</button>
+        <button type="button" data-calc="9" class="h-12 rounded-xl text-xl font-bold" style="background:var(--lp-bg);color:var(--lp-text);border:1px solid var(--lp-command-border);">9</button>
+        <button type="button" data-calc="×" class="h-12 rounded-xl text-xl font-bold" style="background:#F59E0B;color:#132743;border:none;">×</button>
+        <button type="button" data-calc="4" class="h-12 rounded-xl text-xl font-bold" style="background:var(--lp-bg);color:var(--lp-text);border:1px solid var(--lp-command-border);">4</button>
+        <button type="button" data-calc="5" class="h-12 rounded-xl text-xl font-bold" style="background:var(--lp-bg);color:var(--lp-text);border:1px solid var(--lp-command-border);">5</button>
+        <button type="button" data-calc="6" class="h-12 rounded-xl text-xl font-bold" style="background:var(--lp-bg);color:var(--lp-text);border:1px solid var(--lp-command-border);">6</button>
+        <button type="button" data-calc="−" class="h-12 rounded-xl text-xl font-bold" style="background:#F59E0B;color:#132743;border:none;">−</button>
+        <button type="button" data-calc="1" class="h-12 rounded-xl text-xl font-bold" style="background:var(--lp-bg);color:var(--lp-text);border:1px solid var(--lp-command-border);">1</button>
+        <button type="button" data-calc="2" class="h-12 rounded-xl text-xl font-bold" style="background:var(--lp-bg);color:var(--lp-text);border:1px solid var(--lp-command-border);">2</button>
+        <button type="button" data-calc="3" class="h-12 rounded-xl text-xl font-bold" style="background:var(--lp-bg);color:var(--lp-text);border:1px solid var(--lp-command-border);">3</button>
+        <button type="button" data-calc="+" class="h-12 rounded-xl text-xl font-bold" style="background:#F59E0B;color:#132743;border:none;">+</button>
+        <button type="button" data-calc="neg" class="h-12 rounded-xl text-xl font-bold" style="background:rgba(31,58,95,.12);color:var(--lp-text);border:1px solid var(--lp-command-border);">±</button>
+        <button type="button" data-calc="0" class="h-12 rounded-xl text-xl font-bold" style="background:var(--lp-bg);color:var(--lp-text);border:1px solid var(--lp-command-border);">0</button>
+        <button type="button" data-calc="." class="h-12 rounded-xl text-xl font-bold" style="background:var(--lp-bg);color:var(--lp-text);border:1px solid var(--lp-command-border);">.</button>
+        <button type="button" data-calc="=" class="h-12 rounded-xl text-2xl font-bold text-white" style="background:linear-gradient(135deg,#059669,#10B981);border:none;">=</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- بيانات التقويم (عينة) — شكلها { "YYYY-MM-DD": [{dept, desc, tech, done}] } -->
+  <script type="application/json" id="cal-day-data">{
+    "2026-08-02": [{"dept":"شبكات","desc":"تحويل بصمة الحضور والانصراف للموظفين الجدد","tech":"أمير طلعت","done":true}],
+    "2026-08-03": [{"dept":"سيرفرات","desc":"عمل نسخة احتياطية من سيرفر الملفات الرئيسي","tech":"محمد حنفى","done":true}],
+    "2026-08-04": [{"dept":"دعم فني","desc":"إعادة تعيين كلمة مرور لنظام البريد الإلكتروني","tech":"شيماء عبدالحميد","done":true}],
+    "2026-08-05": [{"dept":"طباعة","desc":"إصلاح طابعة الشبكة بالدور الثالث — عطل في وحدة التغذية","tech":"أمير طلعت","done":false},{"dept":"شبكات","desc":"تركيب سويتش جديد بالدور الأول","tech":"أمير طلعت","done":true}],
+    "2026-08-06": [{"dept":"برمجيات","desc":"تحديث برنامج الحضور والانصراف على أجهزة البوابة","tech":"محمد حنفى","done":true},{"dept":"دعم فني","desc":"حل مشكلة بطء في شبكة الفرع","tech":"محمد حنفى","done":true}],
+    "2026-08-08": [{"dept":"دعم فني","desc":"توصيل جهاز كمبيوتر جديد بقسم الحسابات + تحويل البيانات","tech":"شيماء عبدالحميد","done":false}]
+  }</script>
+</div>
+
+<!-- ═══════════════ السكريبتات ═══════════════ -->
+<script>
+/* --- الثيم --- */
+(function(){
+  if (localStorage.getItem('launchpad_theme_v2') !== 'dark') document.documentElement.classList.add('theme-light');
+  var t = document.getElementById('themeToggle');
+  if (t) t.addEventListener('click', function(){
+    var light = document.documentElement.classList.toggle('theme-light');
+    localStorage.setItem('launchpad_theme_v2', light ? 'light' : 'dark');
+  });
+})();
+
+/* --- تاريخ اليوم بالعربي --- */
+(function(){
+  var el = document.getElementById('today-ar');
+  if (el) el.textContent = new Intl.DateTimeFormat('ar-EG', { weekday:'long', year:'numeric', month:'long', day:'numeric' }).format(new Date());
+})();
+
+/* --- الموسيقى (تجريبية: بدون ملفات صوت، بتقلب الحالة بس) --- */
+(function(){
+  var card = document.getElementById('cm-card'), btn = document.getElementById('cm-play'),
+      icon = document.getElementById('cm-play-icon'), playing = false;
+  var titles = ["The Departure — Max Richter","Comptine d'un Autre Été — Yann Tiersen","If Only I Could Tell — Fabrizio Paterlini","Matin dans Le Marais — Jef Martens"];
+  var idx = 0, titleEl = document.getElementById('cm-title');
+  if (!card || !btn) return;
+  function setUI(){ card.classList.toggle('cm-playing', playing); icon.className = 'fa-solid ' + (playing ? 'fa-pause' : 'fa-play') + ' text-base'; }
+  function show(i){ idx = (i + titles.length) % titles.length; if (titleEl) titleEl.textContent = titles[idx]; }
+  btn.addEventListener('click', function(){ playing = !playing; setUI(); });
+  document.getElementById('cm-next').addEventListener('click', function(){ show(idx + 1); });
+  document.getElementById('cm-prev').addEventListener('click', function(){ show(idx - 1); });
+})();
+
+/* --- نوت للتذكير + عاجل (localStorage) --- */
+(function(){
+  function load(){ var v = localStorage.getItem('lp_note_v1') || ''; document.getElementById('note-content').value = v;
+    document.getElementById('note-card-preview').textContent = v ? v : 'اضغط للكتابة';
+    document.getElementById('note-clear-btn').classList.toggle('hidden', !v); }
+  window.saveNote = function(){ var v = document.getElementById('note-content').value.trim();
+    localStorage.setItem('lp_note_v1', v); document.getElementById('notes-modal').close(); load(); };
+  window.clearNote = function(){ if(!confirm('متأكد إنك عايز تمسح التذكير ده؟')) return;
+    localStorage.removeItem('lp_note_v1'); document.getElementById('notes-modal').close(); load(); };
+  load();
+  function loadU(){ var v = localStorage.getItem('lp_urgent_v1') || ''; document.getElementById('urgent-content').value = v;
+    document.getElementById('urgent-card-preview').textContent = v ? v : 'اضغط للكتابة'; }
+  window.saveUrgent = function(){ var v = document.getElementById('urgent-content').value.trim();
+    localStorage.setItem('lp_urgent_v1', v); document.getElementById('urgent-modal').close(); loadU(); };
+  loadU();
+})();
+
+/* --- البحث في جدول المهام --- */
+(function(){
+  var inp = document.getElementById('sample-search'), rows = document.querySelectorAll('#sample-task-tbody .task-row'),
+      counter = document.getElementById('show-count');
+  inp.addEventListener('input', function(){
+    var q = (inp.value || '').trim().toLowerCase(), shown = 0;
+    rows.forEach(function(r){
+      var hay = ((r.dataset.desc||'')+' '+(r.dataset.dept||'')+' '+(r.dataset.tech||'')+' '+(r.dataset.notes||'')).toLowerCase();
+      var m = !q || hay.indexOf(q) !== -1; r.style.display = m ? '' : 'none'; if (m) shown++;
+    });
+    counter.textContent = shown;
+  });
+})();
+
+/* --- دليل التليفونات: بحث --- */
+(function(){
+  var search = document.getElementById('directory-search'), tbody = document.getElementById('directory-tbody'),
+      count = document.getElementById('directory-count');
+  if (!search || !tbody) return;
+  var rows = Array.prototype.slice.call(tbody.querySelectorAll('.directory-row')), total = rows.length;
+  search.addEventListener('input', function(){
+    var q = (search.value||'').trim().toLowerCase(), shown = 0;
+    rows.forEach(function(row){
+      var hay = ((row.dataset.dept||'')+' '+(row.dataset.name||'')+' '+(row.dataset.code||'')).toLowerCase();
+      var m = !q || hay.indexOf(q) !== -1; row.style.display = m ? '' : 'none'; if (m) shown++;
+    });
+    count.textContent = 'عرض ' + shown + ' من ' + total + ' رقم';
+  });
+})();
+
+/* --- الآلة الحاسبة --- */
+(function () {
+  var box = document.getElementById('calc-modal'), disp = document.getElementById('calc-display'), hist = document.getElementById('calc-history');
+  if (!box || !disp) return;
+  var current = '0', prev = null, op = null, waiting = false;
+  function render(){ disp.textContent = current; }
+  function reset(){ current='0'; prev=null; op=null; waiting=false; hist.textContent=''; render(); }
+  function errorState(){ disp.textContent='خطأ: القسمة على صفر'; current='0'; prev=null; op=null; waiting=false; hist.textContent=''; }
+  function compute(a,b,o){ var x=parseFloat(a),y=parseFloat(b),r;
+    if(o==='+')r=x+y; else if(o==='−')r=x-y; else if(o==='×')r=x*y; else if(o==='÷'){ if(y===0)return null; r=x/y; }
+    return parseFloat(r.toFixed(10)); }
+  function setOp(o){ if(op!==null&&!waiting){ var r=compute(prev,current,op); if(r===null){errorState();return;} current=String(r); prev=String(r); } else { prev=current; }
+    op=o; waiting=true; hist.textContent=prev+' '+o; render(); }
+  box.addEventListener('click', function(e){
+    var b = e.target.closest('button[data-calc]'); if (!b) return;
+    var act = b.getAttribute('data-calc');
+    if (act==='clear'){ reset(); return; }
+    if (act==='back'){ if(waiting||current==='0')return; current=current.length>1?current.slice(0,-1):'0'; render(); return; }
+    if (act==='percent'){ if(!waiting&&current!=='0'){ current=String(parseFloat(current)/100); render(); } return; }
+    if (act==='neg'){ if(!waiting&&current!=='0'){ current=current.charAt(0)==='-'?current.slice(1):'-'+current; render(); } return; }
+    if (act==='='){ if(op!==null&&prev!==null&&!waiting){ var r=compute(prev,current,op); if(r===null){errorState();return;}
+      hist.textContent=prev+' '+op+' ='; current=String(r); prev=null; op=null; waiting=true; render(); } return; }
+    if (act==='.'||/^[0-9]$/.test(act)){ if(waiting){ current='0'; waiting=false; hist.textContent=''; }
+      if(act==='.'){ if(current.indexOf('.')>=0)return; current=current==='0'?'0.':current+'.'; }
+      else { if(current.replace(/[^0-9]/g,'').length>=14)return; current=current==='0'?act:current+act; }
+      render(); return; }
+    if (['+','−','×','÷'].indexOf(act)>=0) setOp(act);
+  });
+})();
+
+/* --- التقويم الشهري + مهام اليوم --- */
+(function () {
+  var CAL = {}; try { CAL = JSON.parse(document.getElementById('cal-day-data').textContent || '{}'); } catch(e){ CAL = {}; }
+  var WDS = ['السبت','الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة'];
+  var MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+  var cur = null, today = new Date();
+  today = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  Object.keys(CAL).forEach(function(k){ var p = k.split('-'); var d = new Date(+p[0], +p[1]-1, +p[2]);
+    if (!cur || d > cur) cur = d; });
+  cur = cur || today;
+
+  window.openDayTasks = function(dateStr){
+    var items = CAL[dateStr] || [], modal = document.getElementById('day-tasks-modal'),
+        title = document.getElementById('day-tasks-title'), sub = document.getElementById('day-tasks-sub'),
+        list = document.getElementById('day-tasks-list');
+    if (!modal) return;
+    var p = dateStr.split('-'), d = new Date(+p[0], +p[1]-1, +p[2]);
+    var label = new Intl.DateTimeFormat('ar-EG', { weekday:'long', year:'numeric', month:'long', day:'numeric' }).format(d);
+    title.innerHTML = 'مهام ' + label;
+    sub.textContent = items.length ? items.length + ' مهمة في هذا اليوم' : 'لا توجد مهام مسجلة في هذا اليوم';
+    if (!items.length) list.innerHTML = '<div class="rounded-xl p-6 text-center text-sm" style="background:rgba(15,23,42,.04);color:var(--lp-text-muted);border:1px dashed var(--lp-command-border);">📭 لا توجد مهام</div>';
+    else list.innerHTML = items.map(function(t){
+      var status = t.done ? '<span class="badge badge-sm" style="background:rgba(5,150,105,.15);color:#059669;border:1px solid rgba(5,150,105,.4);">تم</span>'
+                          : '<span class="badge badge-sm" style="background:rgba(245,158,11,.15);color:#B45309;border:1px solid rgba(245,158,11,.4);">مفتوحة</span>';
+      return '<div class="rounded-xl p-3 flex items-start gap-2" style="border:1px solid var(--lp-command-border);">' +
+        '<span class="badge badge-sm font-semibold shrink-0 mt-0.5" style="background:rgba(31,58,95,.1);color:#1F3A5F;border-color:rgba(31,58,95,.3);">' + (t.dept||'—') + '</span>' +
+        '<div class="min-w-0 flex-1"><p class="text-sm font-medium" style="color:var(--lp-text);">' + (t.desc||'') + '</p>' +
+        (t.tech ? '<p class="text-xs mt-0.5" style="color:var(--lp-text-muted);"><i class="fa-solid fa-user-gear"></i> ' + t.tech + '</p>' : '') + '</div>' + status + '</div>';
+    }).join('');
+    if (!modal.open) modal.showModal();
+  };
+
+  function fmtKey(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+  function countOf(d){ var items = CAL[fmtKey(d)]; return items ? items.length : 0; }
+
+  window.calMove = function(dir){ cur = new Date(cur.getFullYear(), cur.getMonth()+dir, 1); render(); };
+
+  function render(){
+    var first = new Date(cur.getFullYear(), cur.getMonth(), 1);
+    var offset = (first.getDay() + 1) % 7; // الأسبوع يبدأ السبت
+    var dim = new Date(cur.getFullYear(), cur.getMonth()+1, 0).getDate();
+    var cells = Math.ceil((offset + dim) / 7) * 7;
+    document.getElementById('cal-title').textContent = MONTHS[cur.getMonth()] + ' ' + cur.getFullYear();
+    document.getElementById('cal-card-sub').textContent = MONTHS[cur.getMonth()] + ' ' + cur.getFullYear();
+
+    var wh = ''; WDS.forEach(function(w,i){ wh += '<span class="text-center text-[11px] font-bold" style="color:' + ((i===0)?'#DC2626':'var(--lp-text-muted)') + ';">' + w + '</span>'; });
+    document.getElementById('cal-weekdays').innerHTML = wh;
+
+    var html = '';
+    for (var i=0; i<cells; i++){
+      var day = i - offset + 1;
+      if (day < 1 || day > dim){ html += '<div></div>'; continue; }
+      var d = new Date(cur.getFullYear(), cur.getMonth(), day), c = countOf(d), key = fmtKey(d);
+      var style = c>=6 ? 'background:linear-gradient(135deg,#1F3A5F,#2E5A8C);color:#fff;border:1px solid rgba(255,255,255,.15);'
+               : c>=3 ? 'background:rgba(31,58,95,.85);color:#fff;border:1px solid rgba(255,255,255,.15);'
+               : c>=1 ? 'background:rgba(31,58,95,.16);border:1px solid rgba(31,58,95,.25);'
+               : 'background:rgba(15,23,42,.03);border:1px dashed var(--lp-command-border);';
+      var isToday = d.getTime() === today.getTime();
+      html += '<button type="button" onclick="openDayTasks(\'' + key + '\')" title="' + (c?c+' مهمة':'لا توجد مهام') + ' — ' + key + '"' +
+        ' class="rounded-xl min-h-14 md:min-h-16 flex flex-col items-center justify-center gap-0.5 cursor-pointer hover:scale-105 transition-transform" style="' + style + (isToday?' box-shadow:0 0 0 2px #F59E0B;':'') + '">' +
+        (isToday?'<span class="text-[10px]">📌</span>':'<span></span>') +
+        '<span class="text-sm font-bold leading-none">' + day + '</span>' +
+        (c ? '<span class="text-[10px] font-bold">' + c + '</span>' : '') + '</button>';
+    }
+    document.getElementById('cal-grid').innerHTML = html;
+  }
+  render();
+})();
+
+/* --- تنبيه الأذان (بيشتغل من data-attributes) --- */
+(function(){
+  var card = document.getElementById('prayer-card'); if (!card) return;
+  var times = [];
+  [['الفجر','data-fajr'],['الظهر','data-dhuhr'],['العصر','data-asr'],['المغرب','data-maghrib'],['العشاء','data-isha']].forEach(function(p){
+    var t = card.getAttribute(p[1]); if (t) times.push({ name:p[0], time:t });
+  });
+  if (!times.length) return;
+  var countdownEl = document.getElementById('prayer-countdown');
+  var fired = {}; try { fired = JSON.parse(localStorage.getItem('adhan_fired_today')||'{}'); } catch(e){}
+  function pad(n){ return n<10?'0'+n:''+n; }
+  function fire(name){
+    if (fired[name]) return; fired[name]=true;
+    try { localStorage.setItem('adhan_fired_today', JSON.stringify(fired)); } catch(e){}
+    card.classList.add('prayer-card-alert');
+    var badge = document.getElementById('prayer-alert-badge');
+    if (badge){ badge.innerHTML = '<i class="fa-solid fa-bell"></i> أذان ' + name; badge.classList.remove('hidden'); }
+    setTimeout(function(){ card.classList.remove('prayer-card-alert'); if (badge) badge.classList.add('hidden'); }, 120000);
+  }
+  window.testAdhan = function(){
+    card.classList.add('prayer-card-alert');
+    var badge = document.getElementById('prayer-alert-badge');
+    if (badge){ badge.innerHTML = '<i class="fa-solid fa-bell"></i> أذان (تجربة)'; badge.classList.remove('hidden'); }
+    setTimeout(function(){ card.classList.remove('prayer-card-alert'); if (badge) badge.classList.add('hidden'); }, 120000);
+  };
+  function tick(){
+    var now = pad(new Date().getHours())+':'+pad(new Date().getMinutes()), next = null;
+    times.forEach(function(t){ if (t.time===now) fire(t.name); if (t.time>now && (!next || t.time<next.time)) next=t; });
+    if (countdownEl){
+      if (next){ var p=next.time.split(':'); var tg=new Date(); tg.setHours(+p[0],+p[1],0,0);
+        var diff=Math.round((tg-new Date())/60000); countdownEl.textContent = diff<=1?'الأذان بعد أقل من دقيقة':'الأذان بعد '+diff+' دقيقة'; }
+      else countdownEl.textContent='انتهت مواعيد اليوم';
+    }
+  }
+  tick(); setInterval(tick, 20000);
+})();
+</script>
+
+<!-- ملاحظة: محتوى أذكار الصباح والأدعية والمصحف الشريف موجود في الملفات الأصلية:
+     welcome_full_copy.html.erb  و welcome_page_scripts.js -->
+</body>
+</html>

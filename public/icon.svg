@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1F3A5F" />
+      <stop offset="100%" stop-color="#132743" />
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F6D365" />
+      <stop offset="100%" stop-color="#FDA085" />
+    </linearGradient>
+    <linearGradient id="goldBorder" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFE082" />
+      <stop offset="50%" stop-color="#FFD54F" />
+      <stop offset="100%" stop-color="#FFA000" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background Circle -->
+  <circle cx="256" cy="256" r="248" fill="url(#bgGrad)" />
+  <circle cx="256" cy="256" r="236" fill="none" stroke="url(#goldBorder)" stroke-width="8" opacity="0.9" />
+  <circle cx="256" cy="256" r="226" fill="none" stroke="#FFFFFF" stroke-width="2" opacity="0.3" />
+
+  <!-- Outer Flag Traces (Red, White, Black) -->
+  <path d="M 256 20 A 236 236 0 0 1 450 120" fill="none" stroke="#C8102E" stroke-width="6" stroke-linecap="round" />
+  <path d="M 450 120 A 236 236 0 0 1 450 392" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" opacity="0.8" />
+  <path d="M 450 392 A 236 236 0 0 1 256 492" fill="none" stroke="#000000" stroke-width="6" stroke-linecap="round" />
+
+  <!-- Center White Shield Badge -->
+  <circle cx="256" cy="256" r="140" fill="#FFFFFF" filter="drop-shadow(0 8px 16px rgba(0,0,0,0.3))" />
+  <circle cx="256" cy="256" r="132" fill="none" stroke="url(#goldBorder)" stroke-width="4" />
+
+  <!-- Stylized Egyptian Golden Eagle Icon -->
+  <g transform="translate(256, 256) scale(1.15)">
+    <!-- Eagle Body / Shield -->
+    <path d="M -24 -20 L 24 -20 L 20 40 L 0 56 L -20 40 Z" fill="#C5A059" stroke="#9A7B38" stroke-width="2" />
+    <path d="M -16 -16 L 16 -16 L 12 34 L 0 46 L -12 34 Z" fill="#E5C158" />
+
+    <!-- Wings Left -->
+    <path d="M -24 -15 C -45 -40 -70 -35 -85 -10 C -75 5 -55 20 -24 25 Z" fill="#C5A059" stroke="#9A7B38" stroke-width="2" />
+    <path d="M -30 -10 C -50 -30 -70 -25 -80 -5 C -70 10 -50 20 -28 22 Z" fill="#E5C158" />
+    
+    <!-- Wings Right -->
+    <path d="M 24 -15 C 45 -40 70 -35 85 -10 C 75 5 55 20 24 25 Z" fill="#C5A059" stroke="#9A7B38" stroke-width="2" />
+    <path d="M 30 -10 C 50 -30 70 -25 80 -5 C 70 10 50 20 28 22 Z" fill="#E5C158" />
+
+    <!-- Eagle Head (Facing Right) -->
+    <path d="M -10 -20 C -10 -45 5 -55 22 -45 C 32 -38 35 -30 25 -25 C 20 -22 15 -20 10 -20 Z" fill="#C5A059" stroke="#9A7B38" stroke-width="2" />
+    <!-- Beak -->
+    <path d="M 22 -45 L 34 -38 L 22 -35 Z" fill="#D4AF37" />
+    <!-- Eye -->
+    <circle cx="12" cy="-38" r="2.5" fill="#1F3A5F" />
+
+    <!-- Tail Feathers -->
+    <path d="M -14 42 L -18 68 L 0 62 L 18 68 L 14 42 Z" fill="#C5A059" />
+
+    <!-- Feet Claws -->
+    <path d="M -12 56 L -16 64 M 12 56 L 16 64" stroke="#9A7B38" stroke-width="3" stroke-linecap="round" />
+  </g>
+
+  <!-- Title Ribbon Text Curve / Under -->
+  <text x="256" y="445" font-family="'Cairo', sans-serif" font-weight="900" font-size="24" fill="#FFFFFF" text-anchor="middle" letter-spacing="1">
+    تكنولوجيا المعلومات
+  </text>
+</svg>

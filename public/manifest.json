@@ -1,0 +1,28 @@
+{
+  "id": "/",
+  "name": "سجل مهام تكنولوجيا المعلومات - الدعم الفني",
+  "short_name": "مهام IT",
+  "description": "برنامج إدارة ومتابعة مهام الدعم الفني والإجازات ودليل الخدمات لجمهورية مصر العربية",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "dir": "rtl",
+  "lang": "ar",
+  "background_color": "#CDEBF9",
+  "theme_color": "#1F3A5F",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

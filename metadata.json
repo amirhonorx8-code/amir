@@ -1,0 +1,6 @@
+{
+  "name": "سجل مهام تكنولوجيا المعلومات - الدعم الفني",
+  "description": "برنامج إدارة ومتابعة مهام الدعم الفني، الإجازات، والإحصائيات الحكومية",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

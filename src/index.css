@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+@layer utilities {
+  @keyframes marquee {
+    0% { transform: translateX(100%); }
+    100% { transform: translateX(-100%); }
+  }
+
+  .animate-marquee {
+    display: inline-block;
+    white-space: nowrap;
+    animation: marquee 25s linear infinite;
+  }
+
+  .animate-marquee:hover {
+    animation-play-state: paused;
+  }
+
+  @keyframes alertPulse {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.75;
+      transform: scale(1.05);
+    }
+  }
+
+  .animate-alert-pulse {
+    animation: alertPulse 2s ease-in-out infinite;
+  }
+
+  .gov-doc-frame {
+    position: fixed;
+    inset: 8px;
+    pointer-events: none;
+    z-index: 30;
+  }
+  .frame-corner {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-color: #D4AF37;
+    pointer-events: none;
+  }
+  .frame-corner-tl { top: 0; left: 0; border-top: 2.5px solid #D4AF37; border-left: 2.5px solid #D4AF37; border-top-left-radius: 4px; }
+  .frame-corner-tr { top: 0; right: 0; border-top: 2.5px solid #D4AF37; border-right: 2.5px solid #D4AF37; border-top-right-radius: 4px; }
+  .frame-corner-bl { bottom: 0; left: 0; border-bottom: 2.5px solid #D4AF37; border-left: 2.5px solid #D4AF37; border-bottom-left-radius: 4px; }
+  .frame-corner-br { bottom: 0; right: 0; border-bottom: 2.5px solid #D4AF37; border-right: 2.5px solid #D4AF37; border-bottom-right-radius: 4px; }
+
+  .title-glow-white {
+    text-shadow: 0 0 10px rgba(255,255,255,0.8), 0 0 20px rgba(255,255,255,0.5);
+  }
+
+  .gold-glow {
+    box-shadow: 0 0 0 3px rgba(212,175,55,0.45), 0 0 20px rgba(212,175,55,0.35), 0 6px 18px rgba(0,0,0,0.25);
+  }
+}
+
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+  th, td {
+    border: 1px solid #ddd !important;
+    padding: 6px !important;
+    font-size: 11px !important;
+  }
+}
+
