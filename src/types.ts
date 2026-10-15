@@ -116,7 +116,6 @@ export interface AppUser {
   canDelete: boolean;
   description: string;
   badgeColor: string;
-  apiToken?: string;
   profilePic?: string;
   bioAudio?: string;
   disabled?: boolean;
@@ -137,7 +136,6 @@ export const APP_USERS: AppUser[] = [
     canDelete: true,
     description: 'مسؤول العمليات والدعم الفني — كامل الصلاحيات (إضافة، تعديل، حذف، إدارة)',
     badgeColor: 'bg-emerald-600 text-white',
-    apiToken: '17bc93214dafe980345bca12ef9034ab56cd78ef1234567890abcdef12345678',
     disabled: false,
     lastSignInAt: '2026-09-08 08:30:00',
   },
@@ -154,7 +152,6 @@ export const APP_USERS: AppUser[] = [
     canDelete: true,
     description: 'مهندسة تشغيل ونظم — كامل الصلاحيات (إضافة، تعديل، حذف، إدارة)',
     badgeColor: 'bg-purple-600 text-white',
-    apiToken: '78ef9012345678abcdef1234567890abcdef1234567890abcdef1234567890ab',
     disabled: false,
     lastSignInAt: '2026-09-08 08:10:00',
   },
@@ -171,7 +168,6 @@ export const APP_USERS: AppUser[] = [
     canDelete: true,
     description: 'مسؤول تشغيل ومتابعة — كامل الصلاحيات (إضافة، تعديل، حذف، إدارة)',
     badgeColor: 'bg-amber-600 text-white',
-    apiToken: '34ef12ab56cd78ef9012345678abcdef1234567890abcdef1234567890abcdef',
     disabled: false,
     lastSignInAt: '2026-09-08 08:20:00',
   },
@@ -188,7 +184,6 @@ export const APP_USERS: AppUser[] = [
     canDelete: true,
     description: 'مدير النظام (أدمن) — كامل الصلاحيات (إضافة، تعديل، حذف، إدارة)',
     badgeColor: 'bg-indigo-600 text-white',
-    apiToken: 'e4a8b792fc40d39e6581bb2d8c9034f19bcae7104d5386f7a1c890de45b23891',
     disabled: false,
     bioAudio: 'audio_bio_amir.webm',
     lastSignInAt: '2026-09-08 09:15:00',
@@ -206,7 +201,6 @@ export const APP_USERS: AppUser[] = [
     canDelete: true,
     description: 'مدير النظام (أدمن) — كامل الصلاحيات (إضافة، تعديل، حذف، إدارة)',
     badgeColor: 'bg-blue-600 text-white',
-    apiToken: '82ab91c4701fde6a23b9c0e54d89a71234bc56de78fa09bc1234567890abcdef',
     disabled: false,
     lastSignInAt: '2026-09-08 08:45:00',
   },
@@ -222,7 +216,6 @@ export const APP_USERS: AppUser[] = [
     canDelete: false,
     description: 'وضع المشاهدة فقط — لا يملك صلاحيات الإضافة أو التعديل أو الحذف (للمطالعة والاستعلام فقط)',
     badgeColor: 'bg-slate-600 text-white',
-    apiToken: '90abcdef1234567890abcdef1234567890abcdef1234567890abcdef12345678',
     disabled: false,
     lastSignInAt: '2026-09-08 07:00:00',
   },
