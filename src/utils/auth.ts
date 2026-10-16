@@ -133,10 +133,7 @@ export function validateLogin(usernameInput: string, passwordInput: string): {
   }
 
   // Strict check: Only password specific to this user account is accepted
-  const isCorrectPassword = 
-    rawPass === validPassword ||
-    rawPass === `${matchedUser.id}@2026` ||
-    rawPass === `${matchedUser.id}2026`;
+  const isCorrectPassword = rawPass === validPassword;
 
   if (!isCorrectPassword) {
     return { 
