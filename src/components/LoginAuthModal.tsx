@@ -39,7 +39,7 @@ export const LoginAuthModal: React.FC<LoginAuthModalProps> = ({
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'login' | 'credentials' | 'change_password'>('login');
+  const [activeTab, setActiveTab] = useState<'login' | 'change_password'>('login');
   
   // Change password state
   const [changeUser, setChangeUser] = useState('tamer');
@@ -181,18 +181,6 @@ export const LoginAuthModal: React.FC<LoginAuthModalProps> = ({
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('credentials')}
-            className={`flex-1 py-2 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-              activeTab === 'credentials'
-                ? 'bg-white dark:bg-slate-800 text-amber-700 dark:text-amber-300 shadow-sm border border-slate-200/80 dark:border-slate-700'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-            }`}
-          >
-            <Key className="w-4 h-4" />
-            <span>دليل الحسابات وكلمات المرور</span>
-          </button>
-          <button
-            type="button"
             onClick={() => setActiveTab('change_password')}
             className={`flex-1 py-2 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
               activeTab === 'change_password'
@@ -316,60 +304,6 @@ export const LoginAuthModal: React.FC<LoginAuthModalProps> = ({
           </div>
         )}
 
-        {/* Tab 2: Credentials Directory (Detailed Table of Usernames and Passwords) */}
-        {activeTab === 'credentials' && (
-          <div className="p-5 sm:p-6 space-y-4 max-h-[60vh] overflow-y-auto">
-            <div className="p-3 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-200 text-xs">
-              <div className="font-bold mb-1 flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                <span>بيانات الحسابات المعتمدة المصرح لها بإجراء التعديل والحذف:</span>
-              </div>
-              <p className="text-[11px] leading-relaxed text-blue-700 dark:text-blue-300">
-                كل حساب له كلمة مرور خاصة ومستقلة تماماً، ولا يمكن الدخول لأي حساب إلا من خلال كلمة المرور الخاصة به.
-              </p>
-            </div>
-
-            <div className="space-y-3">
-              {AUTHORIZED_CREDENTIALS.map((cred) => (
-                <div 
-                  key={cred.id} 
-                  className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/90 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-black text-sm text-slate-900 dark:text-white">{cred.arabicName}</span>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${cred.badgeColor}`}>
-                        كامل الصلاحيات
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">{cred.roleDescription}</p>
-                    <div className="flex flex-wrap items-center gap-3 text-xs pt-1">
-                      <div className="bg-slate-100 dark:bg-slate-700/60 px-2 py-0.5 rounded font-mono text-slate-700 dark:text-slate-300">
-                        اسم المستخدم: <strong>{cred.username}</strong>
-                      </div>
-                      <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-300/40 px-2 py-0.5 rounded font-mono text-amber-700 dark:text-amber-400 font-bold">
-                        كلمة المرور الخاصة: <strong>{cred.passwordDisplay}</strong>
-                      </div>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => handleSelectAccountForLogin(cred)}
-                    className="py-2 px-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all shrink-0"
-                  >
-                    <span>اختيار الحساب وكتابة كلمة المرور</span>
-                    <ArrowRight className="w-3.5 h-3.5 rotate-180" />
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-[11px] text-amber-800 dark:text-amber-300 font-medium">
-              🔒 <strong>تأكيد الأمان:</strong> الحسابات لا تفتح إلا بكتابة كلمة السر الخاصة بكل مهندس، ولا يوجد تخطٍ أو دخول تلقائي دون التحقق.
-            </div>
-          </div>
-        )}
 
         {/* Tab 3: Change Password */}
         {activeTab === 'change_password' && (
