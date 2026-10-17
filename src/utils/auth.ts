@@ -12,7 +12,6 @@ export interface UserCredentialInfo {
   name: string;
   arabicName: string;
   username: string;
-  passwordDisplay: string;
   roleDescription: string;
   badgeColor: string;
 }
@@ -23,7 +22,6 @@ export const AUTHORIZED_CREDENTIALS: UserCredentialInfo[] = [
     name: 'Tamer Mohamed',
     arabicName: 'تامر محمد',
     username: 'tamer',
-    passwordDisplay: 'tamer@2026',
     roleDescription: 'مسؤول العمليات والدعم الفني — كامل الصلاحيات (إضافة وتعديل وحذف وإدارة)',
     badgeColor: 'bg-emerald-600 text-white'
   },
@@ -32,7 +30,6 @@ export const AUTHORIZED_CREDENTIALS: UserCredentialInfo[] = [
     name: 'Shaaimaa Abdelhamid',
     arabicName: 'شيماء عبدالحميد',
     username: 'shaimaa',
-    passwordDisplay: 'shaimaa@2026',
     roleDescription: 'مهندسة تشغيل ونظم — كامل الصلاحيات (إضافة وتعديل وحذف وإدارة)',
     badgeColor: 'bg-purple-600 text-white'
   },
@@ -41,7 +38,6 @@ export const AUTHORIZED_CREDENTIALS: UserCredentialInfo[] = [
     name: 'Mohamed Hanafy',
     arabicName: 'محمد حنفي',
     username: 'hanafy',
-    passwordDisplay: 'hanafy@2026',
     roleDescription: 'مسؤول تشغيل ومتابعة — كامل الصلاحيات (إضافة وتعديل وحذف وإدارة)',
     badgeColor: 'bg-amber-600 text-white'
   },
@@ -50,7 +46,6 @@ export const AUTHORIZED_CREDENTIALS: UserCredentialInfo[] = [
     name: 'Amir Talaat',
     arabicName: 'أمير طلعت',
     username: 'amir',
-    passwordDisplay: 'amir@2026',
     roleDescription: 'مدير النظام (أدمن) — كامل الصلاحيات (إضافة وتعديل وحذف وإدارة)',
     badgeColor: 'bg-indigo-600 text-white'
   },
@@ -59,7 +54,6 @@ export const AUTHORIZED_CREDENTIALS: UserCredentialInfo[] = [
     name: 'Kody (AI Admin)',
     arabicName: 'كودي',
     username: 'kody',
-    passwordDisplay: 'kody@2026',
     roleDescription: 'مدير النظام (أدمن) — كامل الصلاحيات (إضافة وتعديل وحذف وإدارة)',
     badgeColor: 'bg-blue-600 text-white'
   }
