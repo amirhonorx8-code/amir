@@ -1,0 +1,4 @@
+## 2025-03-15 - Improper Origin Validation via String Includes
+**Vulnerability:** Found `origin.includes('google')` used to validate iframe cross-origin postMessage requests that evaluate arbitrary JavaScript in `isExecuteJsOriginAllowed`.
+**Learning:** Using `String.prototype.includes()` for origin validation is fundamentally insecure because it matches subdomains or domain names that merely contain the target string (e.g. `https://attacker-google.com`).
+**Prevention:** Always use the `URL` constructor to parse the origin, and perform exact matching on the `hostname` (e.g. `hostname === 'google.com'`) or strict suffix matching for subdomains (e.g. `hostname.endsWith('.google.com')`).
