@@ -1,0 +1,4 @@
+## 2024-03-08 - [CRITICAL] Fix insecure origin check in postMessage handler
+**Vulnerability:** The `isExecuteJsOriginAllowed` function in `src/utils/iframeMessageHandler.ts` was using `String.prototype.includes` to validate origins (e.g. `origin.includes('google')`). This allows Cross-Site Scripting (XSS) attacks by allowing an attacker to bypass origin checks by hosting an attacking site on `https://malicious-google.com`.
+**Learning:** Relying on simple string inclusion checks for origins is insecure. Exact matching or strict URL parsing (extracting the hostname via the `URL` constructor) is necessary to ensure the origin check works as intended without bypassing.
+**Prevention:** Always parse URLs correctly and check against a strict list of hostnames or domain suffixes instead of using `includes`.
