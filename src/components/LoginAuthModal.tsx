@@ -347,9 +347,6 @@ export const LoginAuthModal: React.FC<LoginAuthModalProps> = ({
                       <div className="bg-slate-100 dark:bg-slate-700/60 px-2 py-0.5 rounded font-mono text-slate-700 dark:text-slate-300">
                         اسم المستخدم: <strong>{cred.username}</strong>
                       </div>
-                      <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-300/40 px-2 py-0.5 rounded font-mono text-amber-700 dark:text-amber-400 font-bold">
-                        كلمة المرور الخاصة: <strong>{cred.passwordDisplay}</strong>
-                      </div>
                     </div>
                   </div>
 
