@@ -1,0 +1,4 @@
+## 2024-05-24 - [CRITICAL] Fix Origin Validation Bypass in JS Execution
+**Vulnerability:** The `isExecuteJsOriginAllowed` function used insecure loose string matching (`origin.includes(...)`) to validate domains allowed to evaluate JavaScript via `postMessage`. This would allow domains like `https://malicious-google.com` or `https://ai.studio.attacker.com` to execute arbitrary JS in the application.
+**Learning:** Checking for substrings in URLs is dangerous for security boundaries, especially when allowing JS execution (`eval`), because attackers can register domains containing the trusted substring.
+**Prevention:** Always parse the origin using the `URL` API and strictly check `url.hostname` for exact matches or use `.endsWith('.trusted.com')` to safely match subdomains.

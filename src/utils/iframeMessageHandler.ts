@@ -13,14 +13,23 @@ export function isExecuteJsOriginAllowed(origin: string, allowedOrigins?: string
   }
   // Safe default origins: Google AI Studio domains, Cloud Run dev/pre URLs, and localhost
   if (!origin) return false;
-  if (
-    origin.includes('ai.studio') ||
-    origin.includes('google') ||
-    origin.includes('run.app') ||
-    origin.includes('localhost') ||
-    origin.includes('127.0.0.1')
-  ) {
-    return true;
+  try {
+    const url = new URL(origin);
+    const hostname = url.hostname;
+
+    if (
+      hostname === 'ai.studio' ||
+      hostname.endsWith('.ai.studio') ||
+      hostname === 'aistudio.google.com' ||
+      hostname.endsWith('.run.app') ||
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1'
+    ) {
+      return true;
+    }
+  } catch (e) {
+    // Invalid origin format
+    return false;
   }
   return false;
 }
