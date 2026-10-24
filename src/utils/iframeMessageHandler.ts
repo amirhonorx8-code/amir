@@ -13,16 +13,20 @@ export function isExecuteJsOriginAllowed(origin: string, allowedOrigins?: string
   }
   // Safe default origins: Google AI Studio domains, Cloud Run dev/pre URLs, and localhost
   if (!origin) return false;
-  if (
-    origin.includes('ai.studio') ||
-    origin.includes('google') ||
-    origin.includes('run.app') ||
-    origin.includes('localhost') ||
-    origin.includes('127.0.0.1')
-  ) {
-    return true;
+
+  try {
+    const url = new URL(origin);
+    const hostname = url.hostname;
+
+    const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
+    const isAiStudio = hostname === 'ai.studio' || hostname.endsWith('.ai.studio');
+    const isGoogle = hostname === 'google.com' || hostname.endsWith('.google.com');
+    const isRunApp = hostname.endsWith('.run.app');
+
+    return isLocalhost || isAiStudio || isGoogle || isRunApp;
+  } catch {
+    return false;
   }
-  return false;
 }
 
 export function initIframeMessageHandler() {
